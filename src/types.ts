@@ -1,3 +1,12 @@
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'Low Stock' | 'Expiry' | 'General';
+  date: string;
+  read: boolean;
+}
+
 export interface User {
   id: string;
   name: string;

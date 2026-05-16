@@ -24,6 +24,8 @@ interface InventoryListProps {
   onEdit: (item: InventoryItem) => void;
   onDelete: (id: string) => void;
   onAddNew: () => void;
+  currency: string;
+  searchTerm: string;
 }
 
 export default function InventoryList({ 
@@ -31,11 +33,15 @@ export default function InventoryList({
   onAdjustStock, 
   onEdit, 
   onDelete,
-  onAddNew 
+  onAddNew,
+  currency,
+  searchTerm: globalSearchTerm
 }: InventoryListProps) {
-  const [searchTerm, setSearchTerm] = React.useState('');
+  const [localSearchTerm, setLocalSearchTerm] = React.useState('');
   const [categoryFilter, setCategoryFilter] = React.useState('All');
   const [statusFilter, setStatusFilter] = React.useState('All');
+
+  const searchTerm = globalSearchTerm || localSearchTerm;
 
   const categories = ['All', ...new Set(items.map(i => i.category))];
   const statuses = ['All', 'In Stock', 'Low Stock', 'Out of Stock'];
@@ -73,8 +79,8 @@ export default function InventoryList({
   };
 
   const filteredItems = items.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         item.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const searchString = `${item.name} ${item.sku} ${item.category} ${item.location}`.toLowerCase();
+    const matchesSearch = searchString.includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'All' || item.category === categoryFilter;
     const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
     return matchesSearch && matchesCategory && matchesStatus;
@@ -117,8 +123,8 @@ export default function InventoryList({
                 type="text" 
                 placeholder="Search by name or SKU..." 
                 className="w-full pl-10 pr-4 py-2 border border-[#E5E5E5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-black/5"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={localSearchTerm}
+                onChange={(e) => setLocalSearchTerm(e.target.value)}
               />
             </div>
             
@@ -151,17 +157,17 @@ export default function InventoryList({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50/50">
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-[#E5E5E5]">Product</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-[#E5E5E5]">SKU</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-[#E5E5E5]">Category</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-[#E5E5E5]">Quantity</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-[#E5E5E5]">Price</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-[#E5E5E5]">Status</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-[#E5E5E5]">Actions</th>
+                <tr className="bg-gray-50/80">
+                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Product</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">SKU / Loc</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Category</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Stock Info</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Price</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#E5E5E5]">
+              <tbody className="divide-y divide-gray-100">
                 <AnimatePresence mode="popLayout">
                   {filteredItems.map((item) => (
                     <motion.tr 
@@ -172,16 +178,26 @@ export default function InventoryList({
                       exit={{ opacity: 0 }}
                       className="group hover:bg-gray-50/80 transition-colors"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <span className="text-sm font-bold">{item.name}</span>
-                          <span className="text-[11px] text-gray-400 font-mono mt-0.5">{item.location}</span>
+                          {item.expiryDate && (
+                            <span className={cn(
+                              "text-[10px] mt-1 flex items-center gap-1",
+                              new Date(item.expiryDate) < new Date() ? "text-red-500 font-bold" : "text-gray-400"
+                            )}>
+                              {new Date(item.expiryDate) < new Date() ? 'Expiried!' : `Expires: ${new Date(item.expiryDate).toLocaleDateString()}`}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                          {item.sku}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded w-fit">
+                            {item.sku}
+                          </span>
+                          <span className="text-[11px] text-gray-400 mt-1">{item.location}</span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-600">{item.category}</span>
@@ -194,15 +210,11 @@ export default function InventoryList({
                           )}>
                             {item.quantity} units
                           </span>
-                          {item.quantity <= item.minThreshold && (
-                            <span className="text-[10px] text-orange-500 flex items-center gap-1">
-                              <AlertCircle className="w-3 h-3" /> Min: {item.minThreshold}
-                            </span>
-                          )}
+                          <span className="text-[10px] text-gray-400 mt-0.5">Min: {item.minThreshold}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap font-mono text-sm">
-                        {formatCurrency(item.price)}
+                        {formatCurrency(item.price, currency)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                          <span className={cn(
@@ -220,25 +232,25 @@ export default function InventoryList({
                           {item.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => onAdjustStock(item.id)}
-                            className="p-1.5 hover:bg-black hover:text-white rounded-md transition-all"
+                            className="p-2 hover:bg-black hover:text-white rounded-xl transition-all shadow-sm border border-gray-100"
                             title="Adjust Stock"
                           >
                             <ArrowUpDown className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => onEdit(item)}
-                            className="p-1.5 hover:bg-blue-50 hover:text-blue-600 rounded-md transition-all"
+                            className="p-2 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all shadow-sm border border-gray-100"
                             title="Edit"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => onDelete(item.id)}
-                            className="p-1.5 hover:bg-red-50 hover:text-red-600 rounded-md transition-all"
+                            className="p-2 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-all shadow-sm border border-gray-100"
                             title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />

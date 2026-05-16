@@ -7,11 +7,20 @@ interface SettingsProps {
   user: UserType | null;
   onLogout: () => void;
   onUpdateUser: (user: UserType) => void;
+  currency: string;
+  onUpdateCurrency: (val: string) => void;
 }
 
-export default function Settings({ user, onLogout, onUpdateUser }: SettingsProps) {
+export default function Settings({ user, onLogout, onUpdateUser, currency, onUpdateCurrency }: SettingsProps) {
   const [name, setName] = React.useState(user?.name || '');
   const [avatar, setAvatar] = React.useState(user?.avatar || '');
+
+  const currencies = [
+    { code: 'USD', name: 'US Dollar ($)' },
+    { code: 'ZAR', name: 'South African Rand (R)' },
+    { code: 'EUR', name: 'Euro (€)' },
+    { code: 'GBP', name: 'British Pound (£)' },
+  ];
 
   const handleSave = () => {
     if (user) {
@@ -99,6 +108,24 @@ export default function Settings({ user, onLogout, onUpdateUser }: SettingsProps
               >
                 Save Profile
               </button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-bold">Preferences</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Default Currency</label>
+                <select 
+                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-black/5"
+                  value={currency}
+                  onChange={(e) => onUpdateCurrency(e.target.value)}
+                >
+                  {currencies.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                </select>
+              </div>
             </CardContent>
           </Card>
 

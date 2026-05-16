@@ -21,21 +21,29 @@ export default function App() {
   const [user, setUser] = React.useState<User | null>(null);
   const [items, setItems] = React.useState<InventoryItem[]>([]);
   const [movements, setMovements] = React.useState<StockMovement[]>([]);
+  const [currency, setCurrency] = React.useState('USD');
+  const [notifications, setNotifications] = React.useState<any[]>([]);
+  const [globalSearch, setGlobalSearch] = React.useState('');
   
-  // Initialization & Persistence
+  const [isInitialized, setIsInitialized] = React.useState(false);
+
+  // Initialization
   React.useEffect(() => {
     const savedUser = localStorage.getItem('uj_user');
     if (savedUser) setUser(JSON.parse(savedUser));
 
     const savedItems = localStorage.getItem('uj_inventory');
     const savedMovements = localStorage.getItem('uj_movements');
+    const savedCurrency = localStorage.getItem('uj_currency');
+    const savedNotifications = localStorage.getItem('uj_notifications');
 
-    if (savedItems) setItems(JSON.parse(savedItems));
-    else setItems(DEMO_ITEMS);
-
-    if (savedMovements) setMovements(JSON.parse(savedMovements));
-    else setMovements(DEMO_MOVEMENTS);
+    setItems(savedItems ? JSON.parse(savedItems) : DEMO_ITEMS);
+    setMovements(savedMovements ? JSON.parse(savedMovements) : DEMO_MOVEMENTS);
+    if (savedCurrency) setCurrency(savedCurrency);
+    if (savedNotifications) setNotifications(JSON.parse(savedNotifications));
     
+    setIsInitialized(true);
+
     // Global hack for import capability
     (window as any).importItems = (newItems: InventoryItem[]) => {
       setItems(prev => {
@@ -46,10 +54,51 @@ export default function App() {
     };
   }, []);
 
+  // Persistence
   React.useEffect(() => {
-    if (items.length > 0) localStorage.setItem('uj_inventory', JSON.stringify(items));
-    if (movements.length > 0) localStorage.setItem('uj_movements', JSON.stringify(movements));
-  }, [items, movements]);
+    if (!isInitialized) return;
+    localStorage.setItem('uj_inventory', JSON.stringify(items));
+    localStorage.setItem('uj_movements', JSON.stringify(movements));
+    localStorage.setItem('uj_currency', currency);
+    localStorage.setItem('uj_notifications', JSON.stringify(notifications));
+  }, [items, movements, currency, notifications, isInitialized]);
+
+  // Check for alerts
+  React.useEffect(() => {
+    const newNotifications: any[] = [];
+    items.forEach(item => {
+      if (item.status === 'Low Stock' || item.status === 'Out of Stock') {
+        const id = `alert-${item.id}-${item.status}`;
+        if (!notifications.find(n => n.id === id)) {
+           newNotifications.push({
+             id,
+             title: item.status,
+             message: `${item.name} is currently ${item.status.toLowerCase()} (${item.quantity} left).`,
+             type: 'Low Stock',
+             date: new Date().toISOString(),
+             read: false
+           });
+        }
+      }
+      if (item.expiryDate && new Date(item.expiryDate) < new Date(Date.now() + 86400000 * 3)) { // 3 days
+         const id = `expiry-${item.id}`;
+         if (!notifications.find(n => n.id === id)) {
+           newNotifications.push({
+             id,
+             title: 'Expiring Soon',
+             message: `${item.name} will expire on ${new Date(item.expiryDate).toLocaleDateString()}.`,
+             type: 'Expiry',
+             date: new Date().toISOString(),
+             read: false
+           });
+         }
+      }
+    });
+
+    if (newNotifications.length > 0) {
+      setNotifications(prev => [...newNotifications, ...prev].slice(0, 50));
+    }
+  }, [items]);
   
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
@@ -131,7 +180,7 @@ export default function App() {
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':
-        return <Dashboard items={items} movements={movements} />;
+        return <Dashboard items={items} movements={movements} currency={currency} />;
       case 'inventory':
         return (
           <InventoryList 
@@ -140,19 +189,37 @@ export default function App() {
             onEdit={(item) => setEditingItem(item)}
             onDelete={deleteItem}
             onAddNew={() => setIsAddModalOpen(true)}
+            currency={currency}
+            searchTerm={globalSearch}
           />
         );
       case 'history':
         return <StockHistory movements={movements} />;
       case 'settings':
-        return <Settings user={user} onLogout={() => { localStorage.removeItem('uj_user'); setUser(null); }} onUpdateUser={setUser} />;
+        return (
+          <Settings 
+            user={user} 
+            onLogout={() => { localStorage.removeItem('uj_user'); setUser(null); }} 
+            onUpdateUser={setUser}
+            currency={currency}
+            onUpdateCurrency={setCurrency}
+          />
+        );
       default:
-        return <Dashboard items={items} movements={movements} />;
+        return <Dashboard items={items} movements={movements} currency={currency} />;
     }
   };
 
   return (
-    <Layout activeView={activeView} onViewChange={setActiveView}>
+    <Layout 
+      activeView={activeView} 
+      onViewChange={setActiveView} 
+      user={user} 
+      notifications={notifications}
+      onNotificationRead={(id) => setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n))}
+      searchTerm={globalSearch}
+      onSearchChange={setGlobalSearch}
+    >
       <AnimatePresence mode="wait">
         <motion.div
            key={activeView}

@@ -26,9 +26,10 @@ import { motion } from 'motion/react';
 interface DashboardProps {
   items: InventoryItem[];
   movements: StockMovement[];
+  currency: string;
 }
 
-export default function Dashboard({ items, movements }: DashboardProps) {
+export default function Dashboard({ items, movements, currency }: DashboardProps) {
   const totalItems = items.length;
   const lowStockCount = items.filter(i => i.status === 'Low Stock').length;
   const outOfStockCount = items.filter(i => i.status === 'Out of Stock').length;
@@ -45,18 +46,18 @@ export default function Dashboard({ items, movements }: DashboardProps) {
 
   const stats = [
     {
-      title: 'Total Products',
+      title: 'Current Inventory',
       value: totalItems,
       icon: Package,
       change: '+12%',
       trend: 'up',
-      color: 'bg-blue-50 text-blue-600'
+      color: 'bg-indigo-50 text-indigo-600'
     },
     {
-      title: 'Total Stock Value',
-      value: formatCurrency(totalValue),
+      title: 'Operational Value',
+      value: formatCurrency(totalValue, currency),
       icon: DollarSign,
-      change: '+4.5%',
+      change: '+8.2%',
       trend: 'up',
       color: 'bg-emerald-50 text-emerald-600'
     },
@@ -64,15 +65,15 @@ export default function Dashboard({ items, movements }: DashboardProps) {
       title: 'Low Stock Alerts',
       value: lowStockCount,
       icon: AlertTriangle,
-      description: `${outOfStockCount} Out of stock`,
+      description: `${outOfStockCount} items out of stock`,
       color: 'bg-orange-50 text-orange-600'
     },
     {
-      title: 'Activity Today',
+      title: 'Recent Activity',
       value: movements.length,
       icon: Activity,
-      description: 'Incoming & Outgoing',
-      color: 'bg-purple-50 text-purple-600'
+      description: 'System actions today',
+      color: 'bg-rose-50 text-rose-600'
     }
   ];
 

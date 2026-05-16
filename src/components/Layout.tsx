@@ -20,14 +20,32 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 
+import { User as UserType, Notification } from '../types';
+
 interface LayoutProps {
   children: React.ReactNode;
   activeView: string;
   onViewChange: (view: string) => void;
+  user: UserType | null;
+  notifications: Notification[];
+  onNotificationRead: (id: string) => void;
+  searchTerm: string;
+  onSearchChange: (val: string) => void;
 }
 
-export default function Layout({ children, activeView, onViewChange }: LayoutProps) {
+export default function Layout({ 
+  children, 
+  activeView, 
+  onViewChange, 
+  user,
+  notifications,
+  onNotificationRead,
+  searchTerm,
+  onSearchChange
+}: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+  const [isNotifOpen, setIsNotifOpen] = React.useState(false);
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -55,19 +73,19 @@ export default function Layout({ children, activeView, onViewChange }: LayoutPro
             </div>
           </div>
 
-          <nav className="flex-1 px-3 py-6 space-y-1">
+          <nav className="flex-1 px-3 py-8 space-y-2">
             {navItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => onViewChange(item.id)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium",
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-semibold tracking-tight",
                   activeView === item.id 
-                    ? "bg-black text-white" 
-                    : "text-gray-500 hover:bg-gray-100 hover:text-black"
+                    ? "bg-black text-white shadow-lg shadow-black/10 scale-[1.02]" 
+                    : "text-gray-400 hover:bg-gray-50 hover:text-black"
                 )}
               >
-                <item.icon className="w-5 h-5 shrink-0" />
+                <item.icon className={cn("w-5 h-5 shrink-0", activeView === item.id ? "text-white" : "text-gray-400")} />
                 {isSidebarOpen && <span>{item.label}</span>}
               </button>
             ))}
@@ -98,27 +116,91 @@ export default function Layout({ children, activeView, onViewChange }: LayoutPro
           </button>
 
           <div className="flex items-center gap-4">
-            <div className="relative group">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <div className="relative group hidden md:block">
+              <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-black transition-colors" />
               <input 
                 type="text" 
-                placeholder="Search inventory..." 
-                className="pl-10 pr-4 py-2 bg-gray-50 border border-[#E5E5E5] rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-black/5 w-64 transition-all focus:w-80"
+                placeholder="Find anything..." 
+                className="pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-black/5 w-64 transition-all focus:w-96 focus:bg-white"
+                value={searchTerm}
+                onChange={(e) => {
+                  onSearchChange(e.target.value);
+                  if (activeView !== 'inventory') onViewChange('inventory');
+                }}
               />
             </div>
             
-            <button className="p-2 hover:bg-gray-100 rounded-full relative">
-              <Bell className="w-5 h-5 text-gray-600" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setIsNotifOpen(!isNotifOpen)}
+                className="p-2 hover:bg-gray-100 rounded-full relative"
+              >
+                <Bell className="w-5 h-5 text-gray-600" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white font-bold">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {isNotifOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-2 w-80 bg-white border border-[#E5E5E5] rounded-2xl shadow-2xl z-[100] overflow-hidden"
+                  >
+                    <div className="p-4 border-b flex items-center justify-between">
+                      <span className="font-bold">Notifications</span>
+                      {unreadCount > 0 && <span className="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded-full font-bold">{unreadCount} New</span>}
+                    </div>
+                    <div className="max-h-[400px] overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-8 text-center text-gray-400">
+                          <p className="text-sm">All caught up!</p>
+                        </div>
+                      ) : (
+                        notifications.map((n) => (
+                          <button 
+                            key={n.id}
+                            onClick={() => onNotificationRead(n.id)}
+                            className={cn(
+                              "w-full text-left p-4 hover:bg-gray-50 transition-colors border-b last:border-0",
+                              !n.read && "bg-blue-50/30"
+                            )}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={cn(
+                                "w-2 h-2 rounded-full mt-1.5 shrink-0",
+                                !n.read ? "bg-red-500" : "bg-gray-300"
+                              )} />
+                              <div>
+                                <p className="text-xs font-bold text-gray-900">{n.title}</p>
+                                <p className="text-xs text-gray-500 mt-1 leading-relaxed">{n.message}</p>
+                                <p className="text-[10px] text-gray-400 mt-2">{new Date(n.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              </div>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             
             <div className="flex items-center gap-3 pl-4 border-l border-[#E5E5E5]">
               <div className="text-right hidden sm:block">
-                <p className="text-xs font-semibold leading-none">Admin User</p>
-                <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">Manager</p>
+                <p className="text-xs font-semibold leading-none">{user?.name || 'User'}</p>
+                <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">{user?.role || 'Staff'}</p>
               </div>
-              <div className="w-8 h-8 rounded-full bg-gray-100 border border-black/5 flex items-center justify-center">
-                <User className="w-4 h-4 text-gray-600" />
+              <div className="w-8 h-8 rounded-full bg-gray-100 border border-black/5 flex items-center justify-center overflow-hidden">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="DP" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-4 h-4 text-gray-600" />
+                )}
               </div>
             </div>
           </div>

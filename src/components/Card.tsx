@@ -20,7 +20,7 @@ export const Card = ({ className, children, ...props }: CardProps) => (
 
 export const CardHeader = ({ className, children, ...props }: CardProps) => (
   <div
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    className={cn("flex flex-col space-y-1.5 p-6 border-b border-gray-50", className)}
     {...props}
   >
     {children}
@@ -30,7 +30,7 @@ export const CardHeader = ({ className, children, ...props }: CardProps) => (
 export const CardTitle = ({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
   <h3
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-lg font-bold leading-none tracking-tight text-gray-900",
       className
     )}
     {...props}
