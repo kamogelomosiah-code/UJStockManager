@@ -15,14 +15,13 @@
   --color-outline: #79747e;
   --color-outline-variant: #cac4d0;
   
-  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 @layer base {
   body {
     @apply antialiased bg-surface text-on-surface;
-    font-family: var(--font-sans);
   }
 }
 
