@@ -9,7 +9,31 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Card = ({ className, children, ...props }: CardProps) => (
   <div
     className={cn(
-      "rounded-2xl border border-[#E5E5E5] bg-white text-card-foreground shadow-sm",
+      "rounded-[24px] border border-outline-variant bg-surface text-on-surface overflow-hidden",
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </div>
+);
+
+export const CardElevated = ({ className, children, ...props }: CardProps) => (
+  <div
+    className={cn(
+      "rounded-[24px] bg-surface text-on-surface shadow-md shadow-black/5 overflow-hidden",
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </div>
+);
+
+export const CardFilled = ({ className, children, ...props }: CardProps) => (
+  <div
+    className={cn(
+      "rounded-[24px] bg-surface-variant text-on-surface-variant overflow-hidden",
       className
     )}
     {...props}
@@ -20,7 +44,7 @@ export const Card = ({ className, children, ...props }: CardProps) => (
 
 export const CardHeader = ({ className, children, ...props }: CardProps) => (
   <div
-    className={cn("flex flex-col space-y-1.5 p-6 border-b border-gray-50", className)}
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
     {...props}
   >
     {children}
@@ -30,7 +54,7 @@ export const CardHeader = ({ className, children, ...props }: CardProps) => (
 export const CardTitle = ({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
   <h3
     className={cn(
-      "text-lg font-bold leading-none tracking-tight text-gray-900",
+      "text-[22px] font-medium leading-7 tracking-normal text-on-surface",
       className
     )}
     {...props}

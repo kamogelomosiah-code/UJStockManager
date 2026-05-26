@@ -1,14 +1,42 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --color-primary: #6750a4;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #eaddff;
+  --color-on-primary-container: #21005d;
+  --color-secondary-container: #e8def8;
+  --color-on-secondary-container: #1d192b;
+  --color-surface: #fdf8fd;
+  --color-on-surface: #1c1b1f;
+  --color-surface-variant: #e7e0ec;
+  --color-on-surface-variant: #49454f;
+  --color-outline: #79747e;
+  --color-outline-variant: #cac4d0;
+  
+  --font-sans: "Roboto", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 @layer base {
   body {
-    @apply antialiased text-[#1A1A1A] bg-[#FDFDFD];
+    @apply antialiased bg-surface text-on-surface;
+  }
+}
+
+@layer components {
+  .m3-input {
+    @apply bg-surface-variant text-on-surface border-b border-outline focus:border-b-2 focus:border-primary rounded-t-[4px] px-4 py-3 outline-none transition-all placeholder:text-on-surface-variant/70 text-sm;
+  }
+  .m3-button {
+    @apply bg-primary text-on-primary rounded-full px-6 py-2.5 text-sm font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2;
+  }
+  .m3-button-tonal {
+    @apply bg-secondary-container text-on-secondary-container rounded-full px-6 py-2.5 text-sm font-medium hover:bg-secondary-container/80 transition-colors flex items-center justify-center gap-2;
+  }
+  .m3-button-text {
+    @apply text-primary rounded-full px-4 py-2.5 text-sm font-medium hover:bg-primary/10 transition-colors flex items-center justify-center gap-2;
   }
 }
 

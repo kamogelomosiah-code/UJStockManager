@@ -42,7 +42,7 @@ export default function Dashboard({ items, movements, currency }: DashboardProps
     }, {} as Record<string, number>)
   ).map(([name, value]) => ({ name, value }));
 
-  const COLORS = ['#000000', '#404040', '#737373', '#A3A3A3', '#D4D4D4'];
+  const COLORS = ['#6750A4', '#938F99', '#79747E', '#49454F', '#1C1B1F'];
 
   const stats = [
     {
@@ -51,7 +51,7 @@ export default function Dashboard({ items, movements, currency }: DashboardProps
       icon: Package,
       change: '+12%',
       trend: 'up',
-      color: 'bg-indigo-50 text-indigo-600'
+      color: 'bg-primary-container text-on-primary-container'
     },
     {
       title: 'Operational Value',
@@ -59,29 +59,28 @@ export default function Dashboard({ items, movements, currency }: DashboardProps
       icon: DollarSign,
       change: '+8.2%',
       trend: 'up',
-      color: 'bg-emerald-50 text-emerald-600'
+      color: 'bg-[#E6F4EA] text-[#137333]'
     },
     {
       title: 'Low Stock Alerts',
       value: lowStockCount,
       icon: AlertTriangle,
       description: `${outOfStockCount} items out of stock`,
-      color: 'bg-orange-50 text-orange-600'
+      color: 'bg-[#FEF7E0] text-[#B06000]'
     },
     {
       title: 'Recent Activity',
       value: movements.length,
       icon: Activity,
       description: 'System actions today',
-      color: 'bg-rose-50 text-rose-600'
+      color: 'bg-[#FCE8E6] text-[#C5221F]'
     }
   ];
 
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Overview</h2>
-        <p className="text-gray-500 text-sm mt-1">Real-time inventory statistics and performance.</p>
+        <h2 className="text-display-small font-normal tracking-tight text-on-surface">Overview</h2>
       </div>
 
       {/* Stats Grid */}
@@ -96,13 +95,13 @@ export default function Dashboard({ items, movements, currency }: DashboardProps
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
-                  <div className={cn("p-2 rounded-lg", stat.color)}>
-                    <stat.icon className="w-5 h-5" />
+                  <div className={cn("p-2 rounded-[12px]", stat.color)}>
+                    <stat.icon className="w-6 h-6" />
                   </div>
                   {stat.change && (
                     <div className={cn(
-                      "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full",
-                      stat.trend === 'up' ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                      "flex items-center gap-1 text-label-small font-medium px-2.5 py-1 rounded-full tracking-wide",
+                      stat.trend === 'up' ? "bg-[#E6F4EA] text-[#137333]" : "bg-[#FCE8E6] text-[#C5221F]"
                     )}>
                       {stat.trend === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                       {stat.change}
@@ -110,10 +109,10 @@ export default function Dashboard({ items, movements, currency }: DashboardProps
                   )}
                 </div>
                 <div className="mt-4">
-                  <p className="text-sm font-medium text-gray-500 uppercase tracking-wider">{stat.title}</p>
-                  <h3 className="text-2xl font-bold mt-1">{stat.value}</h3>
+                  <p className="text-label-small font-medium text-on-surface-variant uppercase tracking-wider">{stat.title}</p>
+                  <h3 className="text-display-small font-normal mt-1">{stat.value}</h3>
                   {stat.description && (
-                    <p className="text-xs text-gray-400 mt-2">{stat.description}</p>
+                    <p className="text-body-small text-outline mt-2">{stat.description}</p>
                   )}
                 </div>
               </CardContent>
@@ -126,32 +125,34 @@ export default function Dashboard({ items, movements, currency }: DashboardProps
         {/* Chart */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-lg font-semibold">Stock by Category</CardTitle>
+            <CardTitle className="text-title-medium">Stock by Category</CardTitle>
           </CardHeader>
           <CardContent className="h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={categoryData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5E5" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant)" />
                 <XAxis 
                   dataKey="name" 
                   axisLine={false} 
                   tickLine={false} 
                   fontSize={12}
-                  tick={{ fill: '#6B7280' }}
+                  tick={{ fill: 'var(--color-on-surface-variant)' }}
                   dy={10}
                 />
                 <YAxis 
                    axisLine={false} 
                    tickLine={false} 
                    fontSize={12}
-                   tick={{ fill: '#6B7280' }}
+                   tick={{ fill: 'var(--color-on-surface-variant)' }}
                 />
                 <Tooltip 
-                  cursor={{ fill: 'transparent' }}
+                  cursor={{ fill: 'var(--color-surface-variant)' }}
                   contentStyle={{ 
-                    borderRadius: '12px', 
-                    border: 'none', 
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    borderRadius: '16px', 
+                    border: '1px solid var(--color-outline-variant)', 
+                    backgroundColor: 'var(--color-surface)',
+                    color: 'var(--color-on-surface)',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                     fontSize: '12px'
                   }}
                 />
@@ -167,9 +168,9 @@ export default function Dashboard({ items, movements, currency }: DashboardProps
 
         {/* Recent Movements */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
-            <button className="text-xs font-semibold text-gray-400 hover:text-black flex items-center gap-1 transition-colors">
+          <CardHeader className="flex flex-row items-center justify-between border-b-0">
+            <CardTitle className="text-title-medium">Recent Activity</CardTitle>
+            <button className="text-label-small font-medium text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
               View All <ArrowRight className="w-3 h-3" />
             </button>
           </CardHeader>
@@ -178,20 +179,20 @@ export default function Dashboard({ items, movements, currency }: DashboardProps
               {movements.slice(0, 5).map((move, i) => (
                 <div key={move.id} className="flex gap-4">
                   <div className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center shrink-0 border",
-                    move.type === 'In' ? "bg-emerald-50 border-emerald-100 text-emerald-600" : "bg-red-50 border-red-100 text-red-600"
+                    "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+                    move.type === 'In' ? "bg-[#E6F4EA] text-[#137333]" : "bg-[#FCE8E6] text-[#C5221F]"
                   )}>
-                    {move.type === 'In' ? <ArrowRight className="w-4 h-4 rotate-45" /> : <ArrowRight className="w-4 h-4 -rotate-45" />}
+                    {move.type === 'In' ? <ArrowRight className="w-5 h-5 rotate-45" /> : <ArrowRight className="w-5 h-5 -rotate-45" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{move.itemName}</p>
-                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{move.reason}</p>
-                    <p className="text-[10px] text-gray-400 mt-1">{new Date(move.date).toLocaleDateString()}</p>
+                    <p className="text-body-medium font-medium truncate text-on-surface">{move.itemName}</p>
+                    <p className="text-body-small text-on-surface-variant mt-0.5 line-clamp-1">{move.reason}</p>
+                    <p className="text-label-small text-outline mt-1">{new Date(move.date).toLocaleDateString()}</p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex items-center">
                     <p className={cn(
-                      "text-sm font-bold",
-                      move.type === 'In' ? "text-emerald-600" : "text-red-600"
+                      "text-body-large font-bold tracking-tight",
+                      move.type === 'In' ? "text-[#137333]" : "text-[#C5221F]"
                     )}>
                       {move.type === 'In' ? '+' : '-'}{move.quantity}
                     </p>

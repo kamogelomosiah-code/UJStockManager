@@ -28,77 +28,78 @@ export default function Auth({ onLogin }: AuthProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-surface flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-black rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl">
-            <Box className="w-8 h-8 text-white" />
+          <div className="w-16 h-16 bg-primary rounded-[16px] flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <Box className="w-8 h-8 text-on-primary" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">UJ Cafeteria</h1>
-          <p className="text-gray-500 text-sm mt-1">Stock Management System</p>
+          <h1 className="text-display-small font-normal tracking-tight text-on-surface">UJ Cafeteria</h1>
+          <p className="text-body-medium text-on-surface-variant mt-1">Stock Management System</p>
         </div>
 
-        <Card className="shadow-xl border-t-4 border-t-black">
+        <Card className="shadow-md">
           <CardHeader>
-            <CardTitle className="text-xl font-bold flex items-center gap-2">
+            <CardTitle className="text-title-large flex items-center gap-2 text-on-surface">
               {isLogin ? <LogIn className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
               {isLogin ? 'Welcome Back' : 'Create Account'}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {!isLogin && (
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Full Name</label>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                {!isLogin && (
+                  <div className="w-full">
+                    <input 
+                      required
+                      type="text" 
+                      placeholder="Full Name (e.g. John Doe)"
+                      className="m3-input w-full"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </div>
+                )}
+                <div className="w-full">
                   <input 
                     required
-                    type="text" 
-                    placeholder="Enter your name"
-                    className="w-full px-4 py-3 border-2 rounded-xl focus:border-black focus:outline-none transition-colors bg-gray-50 font-medium"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    type="email" 
+                    placeholder="Email Address (name@uj.ac.za)"
+                    className="m3-input w-full"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
-              )}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Email Address</label>
-                <input 
-                  required
-                  type="email" 
-                  placeholder="name@uj.ac.za"
-                  className="w-full px-4 py-3 border-2 rounded-xl focus:border-black focus:outline-none transition-colors bg-gray-50 font-medium"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Password</label>
-                <input 
-                  required
-                  type="password" 
-                  placeholder="••••••••"
-                  className="w-full px-4 py-3 border-2 rounded-xl focus:border-black focus:outline-none transition-colors bg-gray-50 font-medium"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
+                <div className="w-full">
+                  <input 
+                    required
+                    type="password" 
+                    placeholder="Password"
+                    className="m3-input w-full"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
               </div>
 
-              <button 
-                type="submit"
-                className="w-full py-4 bg-black hover:bg-neutral-800 text-white rounded-xl font-bold transition-all shadow-lg mt-2"
-              >
-                {isLogin ? 'Sign In' : 'Register Now'}
-              </button>
+              <div className="pt-2">
+                <button 
+                  type="submit"
+                  className="m3-button w-full py-4 text-[16px]"
+                >
+                  {isLogin ? 'Sign In' : 'Register Now'}
+                </button>
+              </div>
 
               <div className="text-center mt-4">
                 <button 
                   type="button"
                   onClick={() => setIsLogin(!isLogin)}
-                  className="text-sm font-medium text-gray-500 hover:text-black transition-colors"
+                  className="text-label-medium text-primary hover:text-primary/80 transition-colors"
                 >
                   {isLogin ? "Don't have an account? Register" : "Already have an account? Login"}
                 </button>
@@ -107,7 +108,7 @@ export default function Auth({ onLogin }: AuthProps) {
           </CardContent>
         </Card>
         
-        <p className="text-center text-xs text-gray-400 mt-8">
+        <p className="text-center text-body-small text-outline mt-8">
           © 2024 University of Johannesburg Cafeteria Services
         </p>
       </motion.div>

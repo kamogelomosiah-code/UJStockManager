@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
-
 import { User as UserType, Notification } from '../types';
 
 interface LayoutProps {
@@ -43,85 +42,89 @@ export default function Layout({
   searchTerm,
   onSearchChange
 }: LayoutProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const [isNotifOpen, setIsNotifOpen] = React.useState(false);
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'inventory', label: 'Inventory', icon: Package },
-    { id: 'history', label: 'Stock History', icon: History },
+    { id: 'history', label: 'History', icon: History },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] text-[#1A1A1A] font-sans selection:bg-[#E2E2E2]">
-      {/* Sidebar */}
-      <aside 
-        className={cn(
-          "fixed top-0 left-0 h-full border-r border-[#E5E5E5] bg-white transition-all duration-300 z-50",
-          isSidebarOpen ? "w-64" : "w-20"
-        )}
-      >
-        <div className="flex flex-col h-full">
-          <div className="h-16 flex items-center px-6 border-bottom border-[#E5E5E5]">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
-                <Box className="w-5 h-5 text-white" />
+    <div className="min-h-screen bg-surface text-on-surface font-sans selection:bg-primary-container">
+      
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-outline-variant z-50 flex items-center justify-around h-[80px] pb-safe">
+        {navItems.map((item) => {
+          const isActive = activeView === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onViewChange(item.id)}
+              className="flex flex-col items-center justify-center w-full h-full gap-1"
+            >
+              <div className={cn(
+                "w-16 h-8 rounded-full flex items-center justify-center transition-colors",
+                isActive ? "bg-secondary-container text-on-secondary-container" : "text-on-surface-variant"
+              )}>
+                <item.icon className="w-6 h-6 shrink-0" />
               </div>
-              {isSidebarOpen && <span className="font-bold tracking-tight text-lg">StockMaster</span>}
-            </div>
-          </div>
+              <span className={cn(
+                "text-[12px] font-medium tracking-wide",
+                isActive ? "text-on-surface" : "text-on-surface-variant"
+              )}>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
 
-          <nav className="flex-1 px-3 py-8 space-y-2">
-            {navItems.map((item) => (
+      {/* Desktop Navigation Rail */}
+      <aside className="hidden md:flex fixed top-0 left-0 h-full w-[88px] bg-surface flex-col items-center py-6 z-50">
+        <div className="w-12 h-12 bg-primary rounded-[16px] flex items-center justify-center mb-8 shadow-sm">
+          <Box className="w-7 h-7 text-on-primary" />
+        </div>
+
+        <nav className="flex-1 flex flex-col gap-6 w-full">
+          {navItems.map((item) => {
+            const isActive = activeView === item.id;
+            return (
               <button
                 key={item.id}
                 onClick={() => onViewChange(item.id)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-semibold tracking-tight",
-                  activeView === item.id 
-                    ? "bg-black text-white shadow-lg shadow-black/10 scale-[1.02]" 
-                    : "text-gray-400 hover:bg-gray-50 hover:text-black"
-                )}
+                className="flex flex-col items-center justify-center w-full gap-1 relative group"
               >
-                <item.icon className={cn("w-5 h-5 shrink-0", activeView === item.id ? "text-white" : "text-gray-400")} />
-                {isSidebarOpen && <span>{item.label}</span>}
+                <div className={cn(
+                  "w-14 h-[32px] rounded-full flex items-center justify-center transition-colors shadow-sm cursor-pointer",
+                  isActive ? "bg-secondary-container text-on-secondary-container" : "text-on-surface-variant group-hover:bg-surface-variant"
+                )}>
+                  <item.icon className="w-5 h-5 shrink-0" />
+                </div>
+                <span className={cn(
+                  "text-[12px] font-medium tracking-wide",
+                  isActive ? "text-on-surface" : "text-on-surface-variant"
+                )}>{item.label}</span>
               </button>
-            ))}
-          </nav>
-
-          <div className="p-4 border-t border-[#E5E5E5]">
-             <div className="px-3 py-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">
-               UJ Cafeteria v1.0
-             </div>
-          </div>
-        </div>
+            );
+          })}
+        </nav>
       </aside>
 
       {/* Main Content */}
-      <main 
-        className={cn(
-          "transition-all duration-300 min-h-screen flex flex-col",
-          isSidebarOpen ? "pl-64" : "pl-20"
-        )}
-      >
-        {/* Header */}
-        <header className="h-16 border-b border-[#E5E5E5] bg-white/80 backdrop-blur-md sticky top-0 z-40 flex items-center justify-between px-8">
-          <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-
+      <main className="md:pl-[88px] pb-20 md:pb-0 transition-all duration-300 min-h-screen flex flex-col">
+        {/* Top App Bar */}
+        <header className="h-[64px] bg-surface sticky top-0 z-40 flex items-center justify-between px-4 md:px-6">
+          <h1 className="text-title-large font-bold tracking-tight text-on-surface md:hidden">StockMaster</h1>
+          <div className="hidden md:block"></div>
+          
           <div className="flex items-center gap-4">
             <div className="relative group hidden md:block">
-              <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-black transition-colors" />
+              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant" />
               <input 
                 type="text" 
-                placeholder="Find anything..." 
-                className="pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-black/5 w-64 transition-all focus:w-96 focus:bg-white"
+                placeholder="Search..." 
+                className="pl-12 pr-4 py-2.5 bg-surface-variant text-on-surface border-none rounded-full text-sm focus:outline-none focus:ring-0 w-40 md:w-64 transition-all md:focus:w-96 placeholder:text-on-surface-variant/70"
                 value={searchTerm}
                 onChange={(e) => {
                   onSearchChange(e.target.value);
@@ -133,11 +136,11 @@ export default function Layout({
             <div className="relative">
               <button 
                 onClick={() => setIsNotifOpen(!isNotifOpen)}
-                className="p-2 hover:bg-gray-100 rounded-full relative"
+                className="p-2 hover:bg-surface-variant rounded-full relative text-on-surface-variant"
               >
-                <Bell className="w-5 h-5 text-gray-600" />
+                <Bell className="w-6 h-6" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full border-2 border-white font-bold">
+                  <span className="absolute top-2 right-2 w-4 h-4 bg-error text-on-error text-[10px] flex items-center justify-center rounded-full font-bold">
                     {unreadCount}
                   </span>
                 )}
@@ -149,15 +152,15 @@ export default function Layout({
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 mt-2 w-80 bg-white border border-[#E5E5E5] rounded-2xl shadow-2xl z-[100] overflow-hidden"
+                    className="absolute right-0 mt-2 w-80 bg-surface border border-outline-variant rounded-[24px] shadow-md z-[100] overflow-hidden"
                   >
-                    <div className="p-4 border-b flex items-center justify-between">
-                      <span className="font-bold">Notifications</span>
-                      {unreadCount > 0 && <span className="text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded-full font-bold">{unreadCount} New</span>}
+                    <div className="p-4 border-b border-outline-variant flex items-center justify-between">
+                      <span className="font-medium text-title-medium">Notifications</span>
+                      {unreadCount > 0 && <span className="text-[10px] bg-error-container text-on-error-container px-2 py-0.5 rounded-full font-bold">{unreadCount} New</span>}
                     </div>
                     <div className="max-h-[400px] overflow-y-auto">
                       {notifications.length === 0 ? (
-                        <div className="p-8 text-center text-gray-400">
+                        <div className="p-8 text-center text-on-surface-variant">
                           <p className="text-sm">All caught up!</p>
                         </div>
                       ) : (
@@ -166,19 +169,19 @@ export default function Layout({
                             key={n.id}
                             onClick={() => onNotificationRead(n.id)}
                             className={cn(
-                              "w-full text-left p-4 hover:bg-gray-50 transition-colors border-b last:border-0",
-                              !n.read && "bg-blue-50/30"
+                              "w-full text-left p-4 hover:bg-surface-variant transition-colors",
+                              !n.read && "bg-secondary-container/20"
                             )}
                           >
                             <div className="flex items-start gap-3">
                               <div className={cn(
                                 "w-2 h-2 rounded-full mt-1.5 shrink-0",
-                                !n.read ? "bg-red-500" : "bg-gray-300"
+                                !n.read ? "bg-error" : "bg-outline-variant"
                               )} />
                               <div>
-                                <p className="text-xs font-bold text-gray-900">{n.title}</p>
-                                <p className="text-xs text-gray-500 mt-1 leading-relaxed">{n.message}</p>
-                                <p className="text-[10px] text-gray-400 mt-2">{new Date(n.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                <p className="text-sm font-medium text-on-surface">{n.title}</p>
+                                <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">{n.message}</p>
+                                <p className="text-[10px] text-outline mt-2">{new Date(n.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                               </div>
                             </div>
                           </button>
@@ -190,23 +193,17 @@ export default function Layout({
               </AnimatePresence>
             </div>
             
-            <div className="flex items-center gap-3 pl-4 border-l border-[#E5E5E5]">
-              <div className="text-right hidden sm:block">
-                <p className="text-xs font-semibold leading-none">{user?.name || 'User'}</p>
-                <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">{user?.role || 'Staff'}</p>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-gray-100 border border-black/5 flex items-center justify-center overflow-hidden">
-                {user?.avatar ? (
-                  <img src={user.avatar} alt="DP" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-4 h-4 text-gray-600" />
-                )}
-              </div>
+            <div className="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden">
+              {user?.avatar ? (
+                <img src={user.avatar} alt="DP" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-5 h-5 text-on-secondary-container" />
+              )}
             </div>
           </div>
         </header>
 
-        <div className="flex-1 p-8 overflow-x-hidden">
+        <div className="flex-1 p-4 md:p-6 overflow-x-hidden">
           {children}
         </div>
       </main>
