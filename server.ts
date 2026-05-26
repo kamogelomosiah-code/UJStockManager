@@ -56,6 +56,101 @@ async function startServer() {
     }
   });
 
+  app.post('/api/ask-ai', async (req, res) => {
+    try {
+      const { question, inventory, movements } = req.body;
+      if (!inventory) {
+        return res.status(400).json({ error: 'Inventory data is required' });
+      }
+
+      // Initialize the safe server-side AI client with recommended user-agent tracking
+      const ai = new GoogleGenAI({ 
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build'
+          }
+        }
+      });
+      
+      const inventoryStr = JSON.stringify(inventory.map((item: any) => ({
+        name: item.name,
+        sku: item.sku,
+        category: item.category,
+        quantity: item.quantity,
+        minThreshold: item.minThreshold,
+        price: item.price,
+        location: item.location,
+        status: item.status,
+        expiryDate: item.expiryDate
+      })), null, 2);
+
+      const movementsStr = movements ? JSON.stringify(movements.slice(0, 35).map((move: any) => ({
+        itemName: move.itemName,
+        type: move.type,
+        quantity: move.quantity,
+        date: move.date,
+        reason: move.reason
+      })), null, 2) : "[]";
+
+      const systemPrompt = `You are "StockAI Analytics", an expert visual database assistant for a school/cafeteria/general store.
+      Below is the real-time inventory list and chronological stock transaction log (history of In, Out, and Adjustments).
+      Analyze these coordinates and answer the user's specific request or query. Avoid generic descriptions; provide highly useful, business-oriented recommendations (e.g. tracking sales volume relative to restock, highlighting specific locations or food waste risk).
+
+      Real-time Inventory Data:
+      ${inventoryStr}
+
+      Chronological Movement Logs:
+      ${movementsStr}
+
+      You MUST respond with a raw JSON object matching this TypeScript interface definition. Do not wrap it in tick marks other than standard JSON format:
+      \`\`\`ts
+      interface AiResponse {
+        answer: string; // Comprehensive answer text in Beautiful Markdown. Include bold items, recommendation bullet points, and insights.
+        chart?: { // Optional chart data. Include this if the user asks for historical patterns, category spreads, safety levels, valuation bars, or if it helps visualize the stock levels.
+          title: string; // Concise chart title
+          type: 'line' | 'bar' | 'pie' | 'area';
+          xAxisKey: string; // The attribute name to use for x-axis labels (e.g., "name", "category", or "date")
+          yAxisKey: string; // The attribute name to use for y-axis numeric values (e.g., "quantity", "price", "count", "value")
+          data: Array<{ [key: string]: string | number }>; // Flat objects mapping keys to values (e.g. [ { "name": "Buns", "quantity": 10 }, { "name": "Apples", "quantity": 40 } ])
+        }
+      }
+      \`\`\`
+
+      If the user is asking for a general summary/overview or has not specified a specific question, generate:
+      1. A short summary of total stock levels & safety.
+      2. Recommendation of what category or shelf to check next.
+      3. A companion chart displaying category volumes, low stock frequencies, or monetary values.
+      `;
+
+      const contents = question ? `User's Question: "${question}"` : "Please review the inventory and generate a stock summary with recommendations and charts.";
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+          responseMimeType: 'application/json'
+        }
+      });
+
+      const responseText = response.text || "{}";
+      try {
+        const parsedJson = JSON.parse(responseText.trim());
+        res.json(parsedJson);
+      } catch (jsonErr) {
+        console.error("Gemini JSON parse failed, returning fallback text", responseText);
+        res.json({
+          answer: responseText,
+          chart: undefined
+        });
+      }
+    } catch (err: any) {
+      console.error('AI Ask Error:', err);
+      res.status(500).json({ error: 'Failed to generate answer from AI' });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

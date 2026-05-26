@@ -12,6 +12,7 @@ import AddEditItemModal from './components/AddEditItemModal';
 import AdjustStockModal from './components/AdjustStockModal';
 import Settings from './components/Settings';
 import Auth from './components/Auth';
+import NotificationsPanel from './components/NotificationsPanel';
 import { DEMO_ITEMS, DEMO_MOVEMENTS } from './constants';
 import { InventoryItem, StockMovement, User } from './types';
 import { AnimatePresence, motion } from 'motion/react';
@@ -23,6 +24,7 @@ export default function App() {
   const [movements, setMovements] = React.useState<StockMovement[]>([]);
   const [currency, setCurrency] = React.useState('USD');
   const [notifications, setNotifications] = React.useState<any[]>([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = React.useState(false);
   const [globalSearch, setGlobalSearch] = React.useState('');
   
   const [isInitialized, setIsInitialized] = React.useState(false);
@@ -39,8 +41,36 @@ export default function App() {
 
     setItems(savedItems ? JSON.parse(savedItems) : DEMO_ITEMS);
     setMovements(savedMovements ? JSON.parse(savedMovements) : DEMO_MOVEMENTS);
-    if (savedCurrency) setCurrency(savedCurrency);
+    
+    if (savedCurrency) {
+      setCurrency(savedCurrency);
+    } else {
+      // Default to South African Rand (R) representing UJ Cafeteria environment
+      setCurrency('ZAR');
+    }
+
     if (savedNotifications) setNotifications(JSON.parse(savedNotifications));
+    
+    // Non-intrusive geolocation background check on first run
+    if (!savedCurrency && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          // South Africa coordinates matching
+          if (latitude < -20 && latitude > -36 && longitude > 15 && longitude < 35) {
+            setCurrency('ZAR');
+          } else if (latitude > 35 && latitude < 70 && longitude > -10 && longitude < 30) {
+            setCurrency('EUR');
+          } else {
+            setCurrency('USD');
+          }
+        },
+        () => {
+          // Fallback is already set to ZAR
+        },
+        { timeout: 5000 }
+      );
+    }
     
     setIsInitialized(true);
 
@@ -177,20 +207,61 @@ export default function App() {
     setAdjustingItem(null);
   };
 
+  const handleNotificationDelete = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const handleSnoozeNotification = (id: string, snoozeMs: number) => {
+    const snoozedUntil = new Date(Date.now() + snoozeMs).toISOString();
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, snoozedUntil } : n));
+  };
+
+  const handleQuickReplenish = (itemId: string, quantity: number, type: 'In' | 'Out', reason: string) => {
+    const targetItem = items.find(i => i.id === itemId);
+    if (!targetItem) return;
+
+    const newQuantity = type === 'In' ? targetItem.quantity + quantity : Math.max(0, targetItem.quantity - quantity);
+
+    setItems(prevItems => prevItems.map(i => i.id === itemId ? {
+      ...i,
+      quantity: newQuantity,
+      lastUpdated: new Date().toISOString(),
+      status: newQuantity === 0 ? 'Out of Stock' : 
+              newQuantity <= i.minThreshold ? 'Low Stock' : 'In Stock'
+    } as InventoryItem : i));
+
+    const movement: StockMovement = {
+      id: 'm' + Date.now(),
+      itemId,
+      itemName: targetItem.name,
+      type,
+      quantity,
+      date: new Date().toISOString(),
+      reason
+    };
+    setMovements(prevMoves => [movement, ...prevMoves]);
+  };
+
   const renderView = () => {
     switch (activeView) {
       case 'dashboard':
-        return <Dashboard items={items} movements={movements} currency={currency} />;
+        return (
+          <Dashboard 
+            items={items} 
+            movements={movements} 
+            currency={currency} 
+            onAdjustStock={(id) => setAdjustingItem(items.find(i => i.id === id) || null)}
+            onViewChange={setActiveView}
+          />
+        );
       case 'inventory':
         return (
           <InventoryList 
             items={items} 
             onAdjustStock={(id) => setAdjustingItem(items.find(i => i.id === id) || null)}
-            onEdit={(item) => setEditingItem(item)}
-            onDelete={deleteItem}
-            onAddNew={() => setIsAddModalOpen(true)}
             currency={currency}
             searchTerm={globalSearch}
+            onQuickReplenish={handleQuickReplenish}
           />
         );
       case 'history':
@@ -206,7 +277,15 @@ export default function App() {
           />
         );
       default:
-        return <Dashboard items={items} movements={movements} currency={currency} />;
+        return (
+          <Dashboard 
+            items={items} 
+            movements={movements} 
+            currency={currency} 
+            onAdjustStock={(id) => setAdjustingItem(items.find(i => i.id === id) || null)}
+            onViewChange={setActiveView}
+          />
+        );
     }
   };
 
@@ -219,6 +298,7 @@ export default function App() {
       onNotificationRead={(id) => setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n))}
       searchTerm={globalSearch}
       onSearchChange={setGlobalSearch}
+      onNotificationsClick={() => setIsNotificationsOpen(true)}
     >
       <AnimatePresence mode="wait">
         <motion.div
@@ -248,6 +328,19 @@ export default function App() {
             item={adjustingItem}
             onClose={() => setAdjustingItem(null)}
             onSubmit={handleAdjustStock}
+          />
+        )}
+        {isNotificationsOpen && (
+          <NotificationsPanel 
+            isOpen={isNotificationsOpen}
+            onClose={() => setIsNotificationsOpen(false)}
+            notifications={notifications}
+            items={items}
+            currency={currency}
+            onNotificationRead={(id) => setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n))}
+            onNotificationDelete={handleNotificationDelete}
+            onSnoozeNotification={handleSnoozeNotification}
+            onQuickReplenish={handleQuickReplenish}
           />
         )}
       </AnimatePresence>

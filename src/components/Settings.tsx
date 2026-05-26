@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './Card';
-import { User, LogOut, Camera, Bell, Shield, Database } from 'lucide-react';
+import { User, LogOut, Camera, Bell, Shield, Database, MapPin, Loader2 } from 'lucide-react';
 import { User as UserType } from '../types';
 
 interface SettingsProps {
@@ -14,6 +14,7 @@ interface SettingsProps {
 export default function Settings({ user, onLogout, onUpdateUser, currency, onUpdateCurrency }: SettingsProps) {
   const [name, setName] = React.useState(user?.name || '');
   const [avatar, setAvatar] = React.useState(user?.avatar || '');
+  const [detecting, setDetecting] = React.useState(false);
 
   const currencies = [
     { code: 'USD', name: 'US Dollar ($)' },
@@ -21,6 +22,37 @@ export default function Settings({ user, onLogout, onUpdateUser, currency, onUpd
     { code: 'EUR', name: 'Euro (€)' },
     { code: 'GBP', name: 'British Pound (£)' },
   ];
+
+  const detectLocationCurrency = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    setDetecting(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        // South Africa bounds: roughly [-35, -22] latitude, [16, 33] longitude (perfect for Johannesburg UJ bounds)
+        if (latitude < -20 && latitude > -36 && longitude > 15 && longitude < 35) {
+          onUpdateCurrency('ZAR');
+          alert(`Success! Automatically detected location near Johannesburg, South Africa (Lat: ${latitude.toFixed(2)}, Lng: ${longitude.toFixed(2)}). Currency updated to South African Rand (R).`);
+        } else if (latitude > 35 && latitude < 70 && longitude > -10 && longitude < 30) {
+          onUpdateCurrency('EUR');
+          alert(`Success! Automatically detected location in Europe (Lat: ${latitude.toFixed(2)}, Lng: ${longitude.toFixed(2)}). Currency updated to Euro (€).`);
+        } else {
+          onUpdateCurrency('USD');
+          alert(`Success! Automatically detected location (Lat: ${latitude.toFixed(2)}, Lng: ${longitude.toFixed(2)}). Currency updated to US Dollar ($).`);
+        }
+        setDetecting(false);
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        alert(`Location access failed: ${error.message}. Please select your currency from standard list manually.`);
+        setDetecting(false);
+      },
+      { timeout: 8000 }
+    );
+  };
 
   const handleSave = () => {
     if (user) {
@@ -117,15 +149,34 @@ export default function Settings({ user, onLogout, onUpdateUser, currency, onUpd
             <CardHeader className="border-b-0 pb-2">
               <CardTitle className="text-title-medium font-bold text-on-surface">Preferences</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4">
               <div className="space-y-1">
+                <label className="text-label-small font-medium text-on-surface-variant">Default Currency</label>
                 <select 
-                  className="m3-input w-full cursor-pointer"
+                  className="m3-input w-full cursor-pointer mt-1"
                   value={currency}
                   onChange={(e) => onUpdateCurrency(e.target.value)}
                 >
                   {currencies.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
                 </select>
+              </div>
+
+              <div className="pt-2">
+                <button 
+                  onClick={detectLocationCurrency}
+                  disabled={detecting}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-secondary-container text-on-secondary-container hover:bg-secondary-container/80 rounded-[24px] font-medium text-sm transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                  {detecting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Detecting Location...
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="w-4 h-4 text-primary" /> Auto-Detect Currency from Location
+                    </>
+                  )}
+                </button>
               </div>
             </CardContent>
           </Card>

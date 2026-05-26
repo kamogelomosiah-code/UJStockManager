@@ -2,5 +2,5 @@
   "name": "UJ Cafeteria Stock Manager",
   "description": "A specialized inventory system for UJ Cafeteria managing food, books, and campus supplies with auth and data persistence.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
