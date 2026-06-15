@@ -18,26 +18,8 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './Card';
 import { InventoryItem, StockMovement } from '../types';
-import { clientAskAi } from '../lib/geminiClient';
 import { formatCurrency, cn } from '../lib/utils';
 import { motion } from 'motion/react';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area,
-  CartesianGrid,
-  Legend
-} from 'recharts';
 
 interface DashboardProps {
   items: InventoryItem[];
@@ -64,116 +46,6 @@ export default function Dashboard({ items, movements, currency, onAdjustStock, o
      m.reason.toLowerCase().includes('supplier') || 
      m.reason.toLowerCase().includes('restock'))
   );
-
-  // Ask AI Chat State
-  const [aiLoading, setAiLoading] = React.useState(false);
-  const [aiAnswer, setAiAnswer] = React.useState<string>('');
-  const [aiChart, setAiChart] = React.useState<any | null>(null);
-  const [customQuestion, setCustomQuestion] = React.useState('');
-  const [aiError, setAiError] = React.useState('');
-
-  // Initial AI summary fetch
-  React.useEffect(() => {
-    fetchAiSummary();
-  }, [items]);
-
-  const fetchAiSummary = async (question?: string) => {
-    setAiLoading(true);
-    setAiError('');
-    try {
-      const data = await clientAskAi({
-        question: question || '',
-        inventory: items,
-        movements: movements
-      });
-      if (data) {
-        setAiAnswer(data.answer || 'No analysis feedback generated.');
-        setAiChart(data.chart || null);
-      } else {
-        setAiError('Failed to generate local AI analytics feedback.');
-      }
-    } catch (err) {
-      console.error(err);
-      setAiError('AI intelligence processing failed. Please check client API keys.');
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const handleAsk = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customQuestion.trim()) return;
-    fetchAiSummary(customQuestion);
-    setCustomQuestion('');
-  };
-
-  const handleQuickPrompt = (promptText: string) => {
-    fetchAiSummary(promptText);
-  };
-
-  // Helper to render formatting from markdown responses
-  function parseMarkdown(text: string) {
-    if (!text) return null;
-    return text.split('\n').map((line, idx) => {
-      // Bullet points starting with * or -
-      if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-        const content = line.trim().substring(2);
-        return (
-          <li key={idx} className="list-disc ml-6 mb-1 text-on-surface-variant text-sm">
-            {parseInline(content)}
-          </li>
-        );
-      }
-      // Numbered lists
-      const numMatch = line.trim().match(/^(\d+)\.\s+(.*)/);
-      if (numMatch) {
-        return (
-          <li key={idx} className="list-decimal ml-6 mb-1 text-on-surface-variant text-sm">
-            {parseInline(numMatch[2])}
-          </li>
-        );
-      }
-      // Headers
-      if (line.trim().startsWith('###')) {
-        return (
-          <h4 key={idx} className="text-title-small font-bold text-on-surface mt-4 mb-2">
-            {parseInline(line.replace('###', '').trim())}
-          </h4>
-        );
-      }
-      if (line.trim().startsWith('##')) {
-        return (
-          <h3 key={idx} className="text-title-medium font-bold text-on-surface mt-4 mb-2 border-b border-outline-variant/50 pb-1">
-            {parseInline(line.replace('##', '').trim())}
-          </h3>
-        );
-      }
-      if (line.trim().startsWith('#')) {
-        return (
-          <h2 key={idx} className="text-title-large font-bold text-on-surface mt-4 mb-2">
-            {parseInline(line.replace('#', '').trim())}
-          </h2>
-        );
-      }
-      if (!line.trim()) return <div key={idx} className="h-2" />;
-      
-      return (
-        <p key={idx} className="text-body-medium text-on-surface-variant mb-2 leading-relaxed">
-          {parseInline(line)}
-        </p>
-      );
-    });
-  }
-
-  function parseInline(text: string) {
-    const parts = text.split(/\*\*([^*]+)\*\*/g);
-    return parts.map((part, index) => {
-      if (index % 2 === 1) {
-        return <strong key={index} className="font-semibold text-[#6750A4]">{part}</strong>;
-      }
-      return part;
-    });
-  }
 
   return (
     <div className="space-y-4 w-full mx-auto px-4 sm:px-6">
@@ -241,41 +113,18 @@ export default function Dashboard({ items, movements, currency, onAdjustStock, o
             </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-5 text-sm text-on-surface-variant leading-relaxed font-sans relative">
-             <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'1\' fill-rule=\'evenodd\'%3E%3Ccircle cx=\'3\' cy=\'3\' r=\'3\'/%3E%3Ccircle cx=\'13\' cy=\'13\' r=\'3\'/%3E%3C/g%3E%3C/svg%3E")'}}></div>
-            {aiLoading ? (
-              <div className="h-full flex flex-col items-center justify-center gap-3 text-primary relative z-10">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse"></div>
-                  <Loader2 className="w-8 h-8 animate-spin" />
-                </div>
-                <span className="font-bold text-xs uppercase tracking-widest text-[#FF3B30] animate-pulse">Analyzing...</span>
-              </div>
-            ) : (
-               <div className="relative z-10 text-[13px]">
-                 {parseMarkdown(aiAnswer) || <p className="opacity-70 text-center italic mt-10">No recent insights from the copilot.</p>}
-               </div>
-            )}
-          </div>
-          
-          <div className="p-3 bg-surface border-t border-outline-variant/30 shrink-0">
-             <form onSubmit={handleAsk} className="relative flex items-center">
-                <input 
-                  type="text" 
-                  placeholder="Ask stock copilot info..."
-                  className="w-full bg-surface-variant rounded-full pl-5 pr-12 py-3.5 text-xs outline-none focus:ring-2 focus:ring-primary/20 text-on-surface transition-shadow"
-                  value={customQuestion}
-                  onChange={(e) => setCustomQuestion(e.target.value)}
-                  disabled={aiLoading}
-                />
-                <button 
-                  type="submit"
-                  disabled={!customQuestion.trim() || aiLoading}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary text-on-primary rounded-full hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-             </form>
+          <div className="flex-1 flex flex-col justify-center items-center p-6 text-center z-10">
+            <Sparkles className="w-12 h-12 text-primary/40 mb-4" />
+            <h3 className="text-sm font-bold text-on-surface mb-2">Smart Inventory Analysis</h3>
+            <p className="text-xs text-neutral-500 max-w-[200px] mb-6">
+              Chat with your AI assistant to generate dynamic stock trends and restock reports.
+            </p>
+            <button 
+              onClick={() => onViewChange('copilot')}
+              className="m3-button !px-8 hover:scale-105 transition-transform"
+            >
+              Open Copilot
+            </button>
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import InventoryList from './components/InventoryList';
 import StockHistory from './components/StockHistory';
+import CopilotView from './components/CopilotView';
 import AddEditItemModal from './components/AddEditItemModal';
 import AdjustStockModal from './components/AdjustStockModal';
 import Settings from './components/Settings';
@@ -323,6 +324,8 @@ export default function App() {
         );
       case 'orders':
         return <Orders />;
+      case 'copilot':
+        return <CopilotView items={items} movements={movements} />;
       case 'history':
         return <StockHistory movements={movements} />;
       case 'settings':

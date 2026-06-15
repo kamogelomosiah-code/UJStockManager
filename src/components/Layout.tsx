@@ -16,7 +16,8 @@ import {
   ArrowDownRight,
   Filter,
   Download,
-  LogOut
+  LogOut,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -52,8 +53,8 @@ export default function Layout({
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'inventory', label: 'Inventory', icon: Package },
+    { id: 'copilot', label: 'Copilot', icon: Sparkles },
     { id: 'orders', label: 'Orders', icon: ArrowUpRight },
-    { id: 'history', label: 'History', icon: History },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
