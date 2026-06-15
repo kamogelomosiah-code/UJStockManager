@@ -11,11 +11,14 @@ import StockHistory from './components/StockHistory';
 import AddEditItemModal from './components/AddEditItemModal';
 import AdjustStockModal from './components/AdjustStockModal';
 import Settings from './components/Settings';
+import Orders from './components/Orders';
 import Auth from './components/Auth';
 import NotificationsPanel from './components/NotificationsPanel';
 import { DEMO_ITEMS, DEMO_MOVEMENTS } from './constants';
 import { InventoryItem, StockMovement, User } from './types';
 import { AnimatePresence, motion } from 'motion/react';
+import { inventoryEngine } from './inventoryEngine';
+import AdminDeskWorkspace from './components/AdminDeskWorkspace';
 
 export default function App() {
   const [activeView, setActiveView] = React.useState('dashboard');
@@ -31,17 +34,28 @@ export default function App() {
 
   // Initialization
   React.useEffect(() => {
-    const savedUser = localStorage.getItem('uj_user');
-    if (savedUser) setUser(JSON.parse(savedUser));
+    try {
+      const savedUser = localStorage.getItem('uj_user');
+      if (savedUser) setUser(JSON.parse(savedUser));
+    } catch (e) {
+      console.error('Error parsing user', e);
+      localStorage.removeItem('uj_user');
+    }
 
-    const savedItems = localStorage.getItem('uj_inventory');
-    const savedMovements = localStorage.getItem('uj_movements');
+    // Force items loading straight from centralized engine
+    const engineItems = inventoryEngine.getItems();
+    setItems(engineItems as any);
+
+    try {
+      const savedMovements = localStorage.getItem('uj_movements');
+      setMovements(savedMovements ? JSON.parse(savedMovements) : DEMO_MOVEMENTS);
+    } catch (e) {
+      console.error('Error parsing movements', e);
+      localStorage.removeItem('uj_movements');
+      setMovements(DEMO_MOVEMENTS);
+    }
+
     const savedCurrency = localStorage.getItem('uj_currency');
-    const savedNotifications = localStorage.getItem('uj_notifications');
-
-    setItems(savedItems ? JSON.parse(savedItems) : DEMO_ITEMS);
-    setMovements(savedMovements ? JSON.parse(savedMovements) : DEMO_MOVEMENTS);
-    
     if (savedCurrency) {
       setCurrency(savedCurrency);
     } else {
@@ -49,7 +63,13 @@ export default function App() {
       setCurrency('ZAR');
     }
 
-    if (savedNotifications) setNotifications(JSON.parse(savedNotifications));
+    try {
+      const savedNotifications = localStorage.getItem('uj_notifications');
+      if (savedNotifications) setNotifications(JSON.parse(savedNotifications));
+    } catch (e) {
+      console.error('Error parsing notifications', e);
+      localStorage.removeItem('uj_notifications');
+    }
     
     // Non-intrusive geolocation background check on first run
     if (!savedCurrency && navigator.geolocation) {
@@ -84,7 +104,7 @@ export default function App() {
     };
   }, []);
 
-  // Persistence
+  // Sync state between UI and Centralized State File
   React.useEffect(() => {
     if (!isInitialized) return;
     localStorage.setItem('uj_inventory', JSON.stringify(items));
@@ -92,6 +112,17 @@ export default function App() {
     localStorage.setItem('uj_currency', currency);
     localStorage.setItem('uj_notifications', JSON.stringify(notifications));
   }, [items, movements, currency, notifications, isInitialized]);
+
+  // Listen to local MongoDB query updates
+  React.useEffect(() => {
+    const handleDbSync = () => {
+      setItems(inventoryEngine.getItems() as any);
+    };
+    window.addEventListener('uj_stock_db_synced', handleDbSync);
+    return () => {
+      window.removeEventListener('uj_stock_db_synced', handleDbSync);
+    };
+  }, []);
 
   // Check for alerts
   React.useEffect(() => {
@@ -139,23 +170,45 @@ export default function App() {
     return <Auth onLogin={setUser} />;
   }
 
+  // Widescreen Administrative Cockpit Switch
+  if (user.role === 'Admin') {
+    return (
+      <AdminDeskWorkspace 
+        user={user}
+        onLogout={() => { 
+          localStorage.removeItem('uj_user'); 
+          setUser(null); 
+        }}
+        currency={currency}
+        onUpdateCurrency={setCurrency}
+        items={items as any}
+        onRefreshAllStates={() => {
+          setItems(inventoryEngine.getItems() as any);
+        }}
+      />
+    );
+  }
+
   const addItem = (newItem: Partial<InventoryItem>) => {
-    const item: InventoryItem = {
-      ...newItem as InventoryItem,
-      id: Math.random().toString(36).substr(2, 9),
-      lastUpdated: new Date().toISOString(),
-      status: newItem.quantity === 0 ? 'Out of Stock' : 
-              newItem.quantity! <= newItem.minThreshold! ? 'Low Stock' : 'In Stock'
-    };
-    setItems([item, ...items]);
+    const created = inventoryEngine.createProduct({
+      name: newItem.name || 'Unnamed Product',
+      sku: newItem.sku || 'SKU-' + Math.floor(Math.random() * 100000),
+      category: newItem.category || 'General',
+      quantity: newItem.quantity || 0,
+      costPrice: (newItem.price || 10) * 0.65, // calculate estimated cost price
+      retailPrice: newItem.price || 10,
+      lowStockThreshold: newItem.minThreshold || 5,
+      location: newItem.location || 'Shelf A1'
+    });
+    setItems(inventoryEngine.getItems() as any);
     
     // Add movement record
     const movement: StockMovement = {
       id: 'm' + Date.now(),
-      itemId: item.id,
-      itemName: item.name,
+      itemId: created.id,
+      itemName: created.name,
       type: 'In',
-      quantity: item.quantity,
+      quantity: created.quantity,
       date: new Date().toISOString(),
       reason: 'Initial stock'
     };
@@ -164,46 +217,54 @@ export default function App() {
   };
 
   const updateItem = (updatedItem: Partial<InventoryItem>) => {
-    setItems(items.map(i => i.id === editingItem?.id ? { 
-      ...i, 
-      ...updatedItem,
-      status: updatedItem.quantity === 0 ? 'Out of Stock' : 
-              updatedItem.quantity! <= updatedItem.minThreshold! ? 'Low Stock' : 'In Stock'
-    } as InventoryItem : i));
+    const index = inventoryEngine.getItems().findIndex(i => i.id === editingItem?.id);
+    if (index !== -1) {
+      const allItems = inventoryEngine.getItems();
+      allItems[index] = {
+        ...allItems[index],
+        ...updatedItem,
+        price: updatedItem.price || allItems[index].price,
+        retailPrice: updatedItem.price || allItems[index].retailPrice,
+        minThreshold: updatedItem.minThreshold || allItems[index].minThreshold,
+        lowStockThreshold: updatedItem.minThreshold || allItems[index].lowStockThreshold,
+        status: (updatedItem.quantity === 0) ? 'Out of Stock' :
+                (updatedItem.quantity! <= (updatedItem.minThreshold || allItems[index].minThreshold)) ? 'Low Stock' : 'In Stock'
+      } as any;
+      localStorage.setItem('functionhead_inventory', JSON.stringify(allItems));
+      inventoryEngine.logAction('PRODUCT_UPDATED', `Administrative properties update executed on "${allItems[index].name}".`);
+    }
+    setItems(inventoryEngine.getItems() as any);
     setEditingItem(null);
   };
 
   const deleteItem = (id: string) => {
     if (confirm('Are you sure you want to delete this product?')) {
-      setItems(items.filter(i => i.id !== id));
+      const remaining = inventoryEngine.getItems().filter(i => i.id !== id);
+      localStorage.setItem('functionhead_inventory', JSON.stringify(remaining));
+      inventoryEngine.logAction('PRODUCT_DELETED', `Deleted product reference ID: ${id}`);
+      setItems(remaining as any);
     }
   };
 
   const handleAdjustStock = (quantity: number, type: 'In' | 'Out', reason: string) => {
     if (!adjustingItem) return;
 
-    const newQuantity = type === 'In' ? adjustingItem.quantity + quantity : adjustingItem.quantity - quantity;
-    
-    // Update items
-    setItems(items.map(i => i.id === adjustingItem.id ? {
-      ...i,
-      quantity: newQuantity,
-      lastUpdated: new Date().toISOString(),
-      status: newQuantity === 0 ? 'Out of Stock' : 
-              newQuantity <= i.minThreshold ? 'Low Stock' : 'In Stock'
-    } : i));
+    const delta = type === 'In' ? quantity : -quantity;
+    const result = inventoryEngine.adjustStockDelta(adjustingItem.id, delta, reason);
+    setItems(inventoryEngine.getItems() as any);
 
-    // Record movement
-    const movement: StockMovement = {
-      id: 'm' + Date.now(),
-      itemId: adjustingItem.id,
-      itemName: adjustingItem.name,
-      type: type === 'In' ? 'In' : 'Out',
-      quantity,
-      date: new Date().toISOString(),
-      reason
-    };
-    setMovements([movement, ...movements]);
+    if (result) {
+      const movement: StockMovement = {
+        id: 'm' + Date.now(),
+        itemId: adjustingItem.id,
+        itemName: adjustingItem.name,
+        type: type === 'In' ? 'In' : 'Out',
+        quantity,
+        date: new Date().toISOString(),
+        reason
+      };
+      setMovements([movement, ...movements]);
+    }
     setAdjustingItem(null);
   };
 
@@ -220,26 +281,22 @@ export default function App() {
     const targetItem = items.find(i => i.id === itemId);
     if (!targetItem) return;
 
-    const newQuantity = type === 'In' ? targetItem.quantity + quantity : Math.max(0, targetItem.quantity - quantity);
+    const delta = type === 'In' ? quantity : -quantity;
+    const result = inventoryEngine.adjustStockDelta(itemId, delta, reason);
+    setItems(inventoryEngine.getItems() as any);
 
-    setItems(prevItems => prevItems.map(i => i.id === itemId ? {
-      ...i,
-      quantity: newQuantity,
-      lastUpdated: new Date().toISOString(),
-      status: newQuantity === 0 ? 'Out of Stock' : 
-              newQuantity <= i.minThreshold ? 'Low Stock' : 'In Stock'
-    } as InventoryItem : i));
-
-    const movement: StockMovement = {
-      id: 'm' + Date.now(),
-      itemId,
-      itemName: targetItem.name,
-      type,
-      quantity,
-      date: new Date().toISOString(),
-      reason
-    };
-    setMovements(prevMoves => [movement, ...prevMoves]);
+    if (result) {
+      const movement: StockMovement = {
+        id: 'm' + Date.now(),
+        itemId,
+        itemName: targetItem.name,
+        type,
+        quantity,
+        date: new Date().toISOString(),
+        reason
+      };
+      setMovements(prevMoves => [movement, ...prevMoves]);
+    }
   };
 
   const renderView = () => {
@@ -264,6 +321,8 @@ export default function App() {
             onQuickReplenish={handleQuickReplenish}
           />
         );
+      case 'orders':
+        return <Orders />;
       case 'history':
         return <StockHistory movements={movements} />;
       case 'settings':
@@ -299,6 +358,7 @@ export default function App() {
       searchTerm={globalSearch}
       onSearchChange={setGlobalSearch}
       onNotificationsClick={() => setIsNotificationsOpen(true)}
+      onLogout={() => { localStorage.removeItem('uj_user'); setUser(null); }}
     >
       <AnimatePresence mode="wait">
         <motion.div

@@ -38,7 +38,7 @@ export default function StockHistory({ movements }: StockHistoryProps) {
                 {move.type === 'In' ? <ArrowUpRight className="w-6 h-6" /> : move.type === 'Out' ? <ArrowDownRight className="w-6 h-6" /> : <Clock className="w-6 h-6" />}
               </div>
 
-              <Card className="flex-1 w-full hover:shadow-md transition-all">
+              <Card className="m3-card flex-1 w-full !p-0 hover:shadow-md transition-shadow">
                 <CardContent className="p-5">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="flex items-center gap-4">

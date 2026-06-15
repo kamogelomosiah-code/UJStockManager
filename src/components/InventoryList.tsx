@@ -99,7 +99,7 @@ export default function InventoryList({
   };
 
   return (
-    <div className="space-y-4 max-w-md mx-auto relative">
+    <div className="space-y-6 w-full mx-auto relative">
       
       {/* Search Bar - Modern Rounded Pill */}
       <div className="relative">
@@ -135,7 +135,7 @@ export default function InventoryList({
       </div>
 
       {/* Product Card List */}
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <AnimatePresence mode="popLayout">
           {filteredItems.map((item) => {
             const aiSuggest = getAiSuggestion(item);
@@ -150,7 +150,7 @@ export default function InventoryList({
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white border border-neutral-200/60 rounded-2xl p-4.5 shadow-sm space-y-3 relative overflow-hidden flex flex-col justify-between"
+                className="m3-card !p-4.5 space-y-3 relative flex flex-col justify-between"
               >
                 {/* Active toast per-card confirmation feedback */}
                 <AnimatePresence>

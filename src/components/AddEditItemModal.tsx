@@ -3,6 +3,7 @@ import { InventoryItem } from '../types';
 import { X, Sparkles, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from './Card';
 import { motion, AnimatePresence } from 'motion/react';
+import { clientMagicAdd } from '../lib/geminiClient';
 
 interface AddEditItemModalProps {
   item?: InventoryItem | null;
@@ -33,25 +34,18 @@ export default function AddEditItemModal({ item, onClose, onSubmit }: AddEditIte
     setIsMagicLoading(true);
     setMagicError('');
     try {
-      const res = await fetch('/api/magic-add', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ description: magicPrompt })
-      });
-      const data = await res.json();
-      if (res.ok) {
+      const data = await clientMagicAdd(magicPrompt);
+      if (data && data.name) {
         setFormData(prev => ({
           ...prev,
           ...data
         }));
         setMagicPrompt('');
       } else {
-        setMagicError(data.error || 'Failed to auto-fill');
+        setMagicError('Failed to parse description accurately. Please try describing name, category and quantity clearly.');
       }
     } catch (err) {
-      setMagicError('Network error');
+      setMagicError('Auto-fill parsing failed.');
     } finally {
       setIsMagicLoading(false);
     }

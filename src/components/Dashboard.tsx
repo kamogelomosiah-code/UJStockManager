@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './Card';
 import { InventoryItem, StockMovement } from '../types';
+import { clientAskAi } from '../lib/geminiClient';
 import { formatCurrency, cn } from '../lib/utils';
 import { motion } from 'motion/react';
 import {
@@ -80,25 +81,20 @@ export default function Dashboard({ items, movements, currency, onAdjustStock, o
     setAiLoading(true);
     setAiError('');
     try {
-      const response = await fetch('/api/ask-ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          question: question || '',
-          inventory: items,
-          movements: movements
-        })
+      const data = await clientAskAi({
+        question: question || '',
+        inventory: items,
+        movements: movements
       });
-      const data = await response.json();
-      if (response.ok) {
-        setAiAnswer(data.answer);
+      if (data) {
+        setAiAnswer(data.answer || 'No analysis feedback generated.');
         setAiChart(data.chart || null);
       } else {
-        setAiError(data.error || 'Failed to generate AI insights');
+        setAiError('Failed to generate local AI analytics feedback.');
       }
     } catch (err) {
       console.error(err);
-      setAiError('Connection to AI service failed. Please verify setup.');
+      setAiError('AI intelligence processing failed. Please check client API keys.');
     } finally {
       setAiLoading(false);
     }
@@ -180,312 +176,108 @@ export default function Dashboard({ items, movements, currency, onAdjustStock, o
   }
 
   return (
-    <div className="space-y-6 max-w-md mx-auto">
-      {/* Streamlined Live Terminal Header */}
-      <div className="flex flex-col gap-3">
-        <div className="space-y-1">
-          <span className="text-[10px] uppercase tracking-widest font-extrabold text-[#6750A4] font-display">
-            Live Overview
-          </span>
-          <h2 className="text-xl font-display font-black tracking-tight text-neutral-900 uppercase">
-            Store Terminal
-          </h2>
-          <p className="text-xs text-neutral-500 leading-normal font-medium">
-            Real-time critical stock alerts & smart AI-generated insights.
-          </p>
-        </div>
-        <div>
-          <button 
-            onClick={() => onViewChange('inventory')}
-            className="w-full py-3 bg-neutral-950 text-white hover:bg-neutral-900 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer font-sans"
-          >
-            Go to Level Monitor <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
+    <div className="space-y-4 w-full mx-auto px-4 sm:px-6">
+      {/* Header */}
+      <div className="flex items-center justify-between py-2">
+        <h1 className="text-2xl font-display font-black tracking-tight text-neutral-900 uppercase">
+          Dashboard
+        </h1>
+        <span className="text-[10px] uppercase tracking-widest font-bold text-neutral-500 font-mono">
+          System Live
+        </span>
       </div>
 
-      {/* Main vertical flow optimized for mobile viewports */}
-      <div className="space-y-6">
-        
-        {/* Urgent alerts shelf */}
-        <div className="space-y-4">
-          <Card className="border-l-4 border-l-[#C5221F] bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden">
-            <CardHeader className="pb-2 border-b-0">
-              <CardTitle className="text-xs font-display font-black uppercase tracking-wider text-neutral-800 flex items-center gap-1.5 pt-1">
-                <ShieldAlert className="w-4.5 h-4.5 text-[#C5221F]" />
-                Critical Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-1">
-              
-              {/* Deliveries block */}
-              {incomingDeliveries.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-[10px] uppercase tracking-widest text-[#6750A4] font-bold flex items-center gap-1">
-                    <Truck className="w-3.5 h-3.5" /> Recent Deliveries Receivals
-                  </h4>
-                  <div className="space-y-1.5">
-                    {incomingDeliveries.slice(0, 2).map((move) => (
-                      <div key={move.id} className="p-3 bg-neutral-50 border border-neutral-100 rounded-xl flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-neutral-900">{move.itemName}</p>
-                          <p className="text-[10px] text-neutral-500 mt-0.5">{move.reason}</p>
-                        </div>
-                        <span className="text-xs font-bold text-[#137333] font-mono">
-                          +{move.quantity} U
-                        </span>
-                      </div>
-                    ))}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Main Stats Column (2/3 width) */}
+        <div className="md:col-span-2 space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <Card className="m3-card !bg-surface !border-l-[6px] !border-l-[#C5221F]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Out of Stock</p>
+                <div className="flex items-center gap-3 mt-2">
+                  <AlertTriangle className="w-6 h-6 text-[#C5221F]" />
+                  <p className="text-3xl font-black text-on-surface">{outOfStockItems.length}</p>
+                </div>
+            </Card>
+            <Card className="m3-card !bg-surface !border-l-[6px] !border-l-[#B06000]">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Low Stock</p>
+                <div className="flex items-center gap-3 mt-2">
+                  <TrendingDown className="w-6 h-6 text-[#B06000]" />
+                  <p className="text-3xl font-black text-on-surface">{lowStockItems.length}</p>
+                </div>
+            </Card>
+          </div>
+
+          {/* Urgent actions list */}
+          {outOfStockItems.length > 0 && (
+            <Card className="m3-card !p-0">
+              <div className="p-5 border-b border-neutral-100 flex items-center justify-between">
+                <h3 className="text-sm font-bold uppercase text-on-surface flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-[#C5221F]" /> Attention Needed
+                </h3>
+              </div>
+              <div className="divide-y divide-neutral-50">
+                {outOfStockItems.slice(0, 4).map((item) => (
+                  <div key={item.id} className="p-4 bg-white flex justify-between items-center group hover:bg-neutral-50 transition-colors">
+                    <div>
+                      <p className="text-xs font-bold text-on-surface">{item.name}</p>
+                      <p className="text-[10px] text-neutral-500 mt-1 uppercase tracking-wider">SKU: {item.sku}</p>
+                    </div>
+                    <button onClick={() => onAdjustStock(item.id)} className="m3-button-text !text-xs !px-4 !py-1.5 border border-primary/20 text-primary group-hover:bg-primary-container">Restock</button>
                   </div>
-                </div>
-              )}
-
-              {/* Out of Stock alert block */}
-              {outOfStockItems.length > 0 && (
-                <div className="space-y-2 pt-1 border-t border-neutral-100/60 mt-1">
-                  <h4 className="text-[10px] uppercase tracking-widest text-[#C5221F] font-bold">
-                    Critical Red Alert: Out Of Stock ({outOfStockItems.length})
-                  </h4>
-                  <div className="space-y-2">
-                    {outOfStockItems.slice(0, 3).map((item) => (
-                      <div key={item.id} className="p-3 bg-[#FCE8E6] border border-transparent rounded-xl flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-[#C5221F]">{item.name}</p>
-                          <p className="text-[10px] text-[#C5221F]/80 mt-0.5">Shelf Location: {item.location}</p>
-                        </div>
-                        <button 
-                          onClick={() => onAdjustStock(item.id)}
-                          className="px-3.5 py-1.5 bg-[#C5221F] hover:bg-[#A51D1A] text-white rounded-full text-[10px] font-bold tracking-wide shadow-sm transition-all active:scale-95 cursor-pointer font-sans"
-                        >
-                          Restock
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Low Stock warn block */}
-              {lowStockItems.length > 0 && (
-                <div className="space-y-2 pt-1 border-t border-neutral-100/60 mt-1">
-                  <h4 className="text-[10px] uppercase tracking-widest text-[#B06000] font-bold">
-                    Attention Alert: Low Level ({lowStockItems.length})
-                  </h4>
-                  <div className="space-y-2">
-                    {lowStockItems.slice(0, 3).map((item) => (
-                      <div key={item.id} className="p-3 bg-[#FEF7E0] border border-transparent rounded-xl flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-[#B06000]">{item.name}</p>
-                          <p className="text-[10px] text-[#B06000]/80 mt-0.5">{item.quantity} left (Min: {item.minThreshold})</p>
-                        </div>
-                        <button 
-                          onClick={() => onAdjustStock(item.id)}
-                          className="px-3.5 py-1.5 bg-[#B06000] hover:bg-[#804000] text-white rounded-full text-[10px] font-bold tracking-wide shadow-sm transition-all active:scale-95 cursor-pointer font-sans"
-                        >
-                          Replenish
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Expiry alerts block */}
-              {expiringItems.length > 0 && (
-                <div className="space-y-2 pt-1 border-t border-neutral-100/60 mt-1">
-                  <h4 className="text-[10px] uppercase tracking-widest text-[#B06000] font-bold flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-[#B06000]" /> Approaching Expiry ({expiringItems.length})
-                  </h4>
-                  <div className="space-y-2">
-                    {expiringItems.slice(0, 2).map((item) => (
-                      <div key={item.id} className="p-3 bg-neutral-50 border border-neutral-100 rounded-xl flex items-center justify-between">
-                        <div>
-                          <p className="text-xs font-bold text-neutral-900">{item.name}</p>
-                          <p className="text-[10px] text-red-600 font-bold mt-0.5">
-                            Expiration: {item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : 'N/A'}
-                          </p>
-                        </div>
-                        <button 
-                          onClick={() => onAdjustStock(item.id)}
-                          className="px-3 py-1.5 bg-neutral-200 text-neutral-800 rounded-full text-[10px] font-bold hover:bg-neutral-300 transition-all active:scale-95 cursor-pointer font-sans"
-                        >
-                          Write Off
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Empty state when everything is perfect */}
-              {incomingDeliveries.length === 0 && outOfStockItems.length === 0 && lowStockItems.length === 0 && expiringItems.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-[#137333] font-bold text-xs uppercase tracking-wider">● All levels online & stable</p>
-                  <p className="text-[11px] text-neutral-500 mt-1">No cafeteria items are presently running low.</p>
-                </div>
-              )}
-
-            </CardContent>
-          </Card>
+                ))}
+              </div>
+            </Card>
+          )}
         </div>
 
-        {/* Ask AI Smart Assistance panel */}
-        <div className="space-y-4">
-          <Card className="shadow-none bg-white border border-neutral-200 rounded-2xl overflow-hidden">
-            <div className="p-4 bg-[#6750A4] text-white flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="p-1.5 bg-white/10 rounded-lg">
-                  <Sparkles className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-display font-extrabold uppercase tracking-widest text-white leading-none">AI Smart Assist</h3>
-                  <p className="text-[10px] text-white/70 block mt-0.5 font-semibold">Store level forecasts and anomalies</p>
-                </div>
+        {/* AI Assistant Column (1/3 width, persistent on desktop) */}
+        <div className="flex flex-col h-[480px] m3-card !p-0 !bg-surface-variant overflow-hidden">
+          <div className="flex items-center justify-between p-4 bg-primary text-white shrink-0 shadow-sm z-10">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-xl">
+                 <Sparkles className="w-5 h-5 text-white" />
               </div>
-              {aiLoading && <Loader2 className="w-4 h-4 animate-spin text-white" />}
+              <span className="text-sm font-bold uppercase tracking-wide">Stock Copilot AI</span>
             </div>
-
-            <CardContent className="p-6 space-y-6">
-              
-              {/* Quick Prompts Shelf */}
-              <div className="space-y-2">
-                <span className="text-label-small text-outline font-bold uppercase tracking-wider block">Recommended Queries</span>
-                <div className="flex flex-wrap gap-2">
-                  <button 
-                    onClick={() => handleQuickPrompt("Generate a comprehensive summary of stock levels and current trends")}
-                    className="px-3.5 py-1.5 bg-surface-variant hover:bg-[#eaddff] text-on-surface-variant hover:text-[#21005d] text-xs font-medium rounded-full cursor-pointer transition-colors border border-transparent hover:border-primary-container"
-                  >
-                    Summarize Inventory
-                  </button>
-                  <button 
-                    onClick={() => handleQuickPrompt("Which locations contain the items that are running low or out of stock? Give me a listing.")}
-                    className="px-3.5 py-1.5 bg-surface-variant hover:bg-[#eaddff] text-on-surface-variant hover:text-[#21005d] text-xs font-medium rounded-full cursor-pointer transition-colors border border-transparent hover:border-primary-container"
-                  >
-                    Check Storage Anomalies
-                  </button>
-                  <button 
-                    onClick={() => handleQuickPrompt("What is the total monetary value of our stock across categories, and what should we restock first?")}
-                    className="px-3.5 py-1.5 bg-surface-variant hover:bg-[#eaddff] text-on-surface-variant hover:text-[#21005d] text-xs font-medium rounded-full cursor-pointer transition-colors border border-transparent hover:border-primary-container"
-                  >
-                    Assess Stock Value
-                  </button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-5 text-sm text-on-surface-variant leading-relaxed font-sans relative">
+             <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23000000\' fill-opacity=\'1\' fill-rule=\'evenodd\'%3E%3Ccircle cx=\'3\' cy=\'3\' r=\'3\'/%3E%3Ccircle cx=\'13\' cy=\'13\' r=\'3\'/%3E%3C/g%3E%3C/svg%3E")'}}></div>
+            {aiLoading ? (
+              <div className="h-full flex flex-col items-center justify-center gap-3 text-primary relative z-10">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse"></div>
+                  <Loader2 className="w-8 h-8 animate-spin" />
                 </div>
+                <span className="font-bold text-xs uppercase tracking-widest text-[#FF3B30] animate-pulse">Analyzing...</span>
               </div>
-
-              {/* Chat Text Screen */}
-              <div className="border border-outline-variant/60 rounded-2xl bg-surface/40 p-5.5 min-h-[300px] max-h-[520px] overflow-y-auto space-y-4">
-                {aiLoading && !aiAnswer ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-3 text-outline">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <p className="text-sm font-medium">Analyzing stock data levels...</p>
-                  </div>
-                ) : aiError ? (
-                  <div className="p-4 bg-[#FCE8E6] text-[#C5221F] rounded-xl text-sm font-medium">
-                    {aiError}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="prose prose-indigo max-w-none">
-                      {parseMarkdown(aiAnswer)}
-                    </div>
-
-                    {/* Inline dynamic charts of historical pattern/anomalies */}
-                    {aiChart && aiChart.data && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mt-6 p-4 rounded-2xl bg-white border border-outline-variant/60 shadow-sm"
-                      >
-                        <div className="mb-4">
-                          <h5 className="text-body-medium font-bold text-on-surface flex items-center gap-1.5">
-                            <Activity className="w-5 h-5 text-[#6750A4]" />
-                            {aiChart.title}
-                          </h5>
-                          <span className="text-[10px] text-outline block mt-0.5">Dynamic AI Generated Visual Chart</span>
-                        </div>
-                        
-                        <div className="h-60 w-full">
-                          <ResponsiveContainer width="100%" height="100%">
-                            {aiChart.type === 'bar' ? (
-                              <BarChart data={aiChart.data}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
-                                <XAxis dataKey={aiChart.xAxisKey} stroke="#757575" fontSize={10} tickLine={false} />
-                                <YAxis stroke="#757575" fontSize={10} tickLine={false} axisLine={false} />
-                                <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e1e1e1', borderRadius: '12px' }} />
-                                <Bar dataKey={aiChart.yAxisKey} fill="#6750A4" radius={[4, 4, 0, 0]} />
-                              </BarChart>
-                            ) : aiChart.type === 'pie' ? (
-                              <PieChart>
-                                <Pie
-                                  data={aiChart.data}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={45}
-                                  outerRadius={65}
-                                  paddingAngle={4}
-                                  dataKey={aiChart.yAxisKey}
-                                  nameKey={aiChart.xAxisKey}
-                                >
-                                  {aiChart.data.map((entry: any, index: number) => (
-                                    <Cell key={`cell-${index}`} fill={['#6750A4', '#03AAC9', '#B06000', '#C5221F', '#137333'][index % 5]} />
-                                  ))}
-                                </Pie>
-                                <Tooltip />
-                              </PieChart>
-                            ) : aiChart.type === 'area' ? (
-                              <AreaChart data={aiChart.data}>
-                                <defs>
-                                  <linearGradient id="aiAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#6750A4" stopOpacity={0.25}/>
-                                    <stop offset="95%" stopColor="#6750A4" stopOpacity={0.01}/>
-                                  </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" vertical={false} />
-                                <XAxis dataKey={aiChart.xAxisKey} stroke="#757575" fontSize={10} />
-                                <YAxis stroke="#757575" fontSize={10} />
-                                <Tooltip />
-                                <Area type="monotone" dataKey={aiChart.yAxisKey} stroke="#6750A4" fillOpacity={1} fill="url(#aiAreaGrad)" />
-                              </AreaChart>
-                            ) : (
-                              <LineChart data={aiChart.data}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
-                                <XAxis dataKey={aiChart.xAxisKey} stroke="#757575" fontSize={10} />
-                                <YAxis stroke="#757575" fontSize={10} />
-                                <Tooltip />
-                                <Line type="monotone" dataKey={aiChart.yAxisKey} stroke="#6750A4" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 6 }} />
-                              </LineChart>
-                            )}
-                          </ResponsiveContainer>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Chat Input Console */}
-              <form onSubmit={handleAsk} className="relative flex items-center">
+            ) : (
+               <div className="relative z-10 text-[13px]">
+                 {parseMarkdown(aiAnswer) || <p className="opacity-70 text-center italic mt-10">No recent insights from the copilot.</p>}
+               </div>
+            )}
+          </div>
+          
+          <div className="p-3 bg-surface border-t border-outline-variant/30 shrink-0">
+             <form onSubmit={handleAsk} className="relative flex items-center">
                 <input 
                   type="text" 
-                  disabled={aiLoading}
-                  placeholder="Ask stock quantities, restock plans, valuations..."
-                  className="w-full pl-5 pr-14 py-4.5 bg-surface-variant rounded-2xl outline-none text-sm text-on-surface border border-transparent focus:border-primary transition-all placeholder:text-on-surface-variant/60 disabled:opacity-50"
+                  placeholder="Ask stock copilot info..."
+                  className="w-full bg-surface-variant rounded-full pl-5 pr-12 py-3.5 text-xs outline-none focus:ring-2 focus:ring-primary/20 text-on-surface transition-shadow"
                   value={customQuestion}
                   onChange={(e) => setCustomQuestion(e.target.value)}
+                  disabled={aiLoading}
                 />
                 <button 
                   type="submit"
-                  disabled={aiLoading || !customQuestion.trim()}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-xl bg-primary text-on-primary flex items-center justify-center disabled:opacity-30 transition-opacity cursor-pointer shadow-sm active:scale-95"
+                  disabled={!customQuestion.trim() || aiLoading}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-primary text-on-primary rounded-full hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                  <CornerDownLeft className="w-5 h-5" />
+                  <ArrowRight className="w-4 h-4" />
                 </button>
-              </form>
-
-            </CardContent>
-          </Card>
+             </form>
+          </div>
         </div>
-
       </div>
     </div>
   );

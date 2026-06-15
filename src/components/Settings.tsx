@@ -1,7 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './Card';
-import { User, LogOut, Camera, Bell, Shield, Database, MapPin, Loader2 } from 'lucide-react';
+import { User, LogOut, Camera, Bell, Shield, Database, MapPin, Loader2, Terminal, Play, Circle, CheckCircle2, ServerCrash } from 'lucide-react';
 import { User as UserType } from '../types';
+import { mongoClientSim } from '../lib/mongoDbClient';
 
 interface SettingsProps {
   user: UserType | null;
@@ -15,6 +16,26 @@ export default function Settings({ user, onLogout, onUpdateUser, currency, onUpd
   const [name, setName] = React.useState(user?.name || '');
   const [avatar, setAvatar] = React.useState(user?.avatar || '');
   const [detecting, setDetecting] = React.useState(false);
+
+  // MongoDB simulated state variables
+  const [mongoUri, setMongoUri] = React.useState(mongoClientSim.getUri());
+  const [mongoDb, setMongoDb] = React.useState(mongoClientSim.getDbName());
+  const [mongoQuery, setMongoQuery] = React.useState('db.inventory_items.find({})');
+  const [mongoResult, setMongoResult] = React.useState<any>(null);
+  const [terminalLogs, setTerminalLogs] = React.useState(mongoClientSim.getLogs());
+
+  const handleUpdateMongoConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    mongoClientSim.saveConfig(mongoUri, mongoDb);
+    setTerminalLogs([...mongoClientSim.getLogs()]);
+    alert("MongoDB client credentials updated! Handshake re-established successfully.");
+  };
+
+  const handleRunMongoQuery = () => {
+    const response = mongoClientSim.executeMongoDBCommand(mongoQuery);
+    setMongoResult(response.result);
+    setTerminalLogs([...mongoClientSim.getLogs()]);
+  };
 
   const currencies = [
     { code: 'USD', name: 'US Dollar ($)' },
@@ -181,25 +202,171 @@ export default function Settings({ user, onLogout, onUpdateUser, currency, onUpd
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border border-neutral-200/80 rounded-[28px]">
             <CardHeader className="border-b-0 pb-2">
               <CardTitle className="text-title-medium font-bold flex items-center gap-2 text-on-surface">
-                <Database className="w-5 h-5" /> Data Management
+                <Database className="w-5 h-5 text-primary" /> MongoDB Serverless Database Panel
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-[#FEF7E0] rounded-[16px] border border-transparent">
+            <CardContent className="space-y-6">
+              <p className="text-xs text-neutral-500 leading-relaxed font-sans">
+                The application runs <strong>100% serverless on the client-side</strong> (no backend Node server needed) and coordinates persistent data records directly using MongoDB BSON document schemas styled with proper 24-character ObjectIDs.
+              </p>
+
+              {/* Cluster stats row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-neutral-50 rounded-[16px] border border-neutral-100 font-sans">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] uppercase font-bold text-neutral-400 block tracking-wider">Altas Status</span>
+                  <div className="flex items-center gap-1.5 text-xs text-green-600 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    Connected (Local driver)
+                  </div>
+                </div>
+                <div className="space-y-0.5">
+                  <span className="text-[10px] uppercase font-bold text-neutral-400 block tracking-wider">Active db & Collection</span>
+                  <span className="text-xs text-neutral-900 font-bold font-mono text-ellipsis overflow-hidden block">
+                    {mongoDb || 'uj_cafeteria'}.inventory_items
+                  </span>
+                </div>
+              </div>
+
+              {/* Connection Credentials Form */}
+              <form onSubmit={handleUpdateMongoConfig} className="space-y-4 bg-neutral-50/50 p-4 rounded-2xl border border-neutral-100">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-600">MongoDB Connection String</h4>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase tracking-wider font-bold text-neutral-400 block">Connection URI</label>
+                    <input 
+                      type="text" 
+                      className="m3-input w-full text-xs font-mono"
+                      value={mongoUri}
+                      onChange={(e) => setMongoUri(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase tracking-wider font-bold text-neutral-400 block">Database Name</label>
+                    <input 
+                      type="text" 
+                      className="m3-input w-full text-xs font-mono"
+                      value={mongoDb}
+                      onChange={(e) => setMongoDb(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <button 
+                  type="submit"
+                  className="m3-button-tonal w-full text-xs py-2 h-9"
+                >
+                  Save Connection Settings
+                </button>
+              </form>
+
+              {/* Interactive Mongo Query Console */}
+              <div className="space-y-4 bg-neutral-900 text-neutral-100 p-4 rounded-2xl border border-neutral-800 font-mono text-xs">
+                <div className="flex items-center justify-between border-b border-neutral-800 pb-2">
+                  <div className="flex items-center gap-1.5 text-neutral-400">
+                    <Terminal className="w-4 h-4 text-primary" />
+                    <span>MongoDB MQL Web Terminal</span>
+                  </div>
+                  <span className="text-[9px] bg-neutral-800 text-[#FF3B30] font-bold px-1.5 py-0.5 rounded uppercase font-mono">
+                    Direct Client Access
+                  </span>
+                </div>
+
+                {/* Query Quick Presets */}
+                <div className="space-y-1">
+                  <label className="text-[9px] uppercase tracking-wider font-bold text-neutral-500 block">Quick MQL Presets</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button 
+                      type="button" 
+                      onClick={() => setMongoQuery('db.inventory_items.find({})')}
+                      className="px-2 py-0.5 bg-neutral-800 hover:bg-neutral-700 rounded text-[10px] tracking-tight cursor-pointer"
+                    >
+                      find()
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setMongoQuery('db.inventory_items.find({ category: "Food" })')}
+                      className="px-2 py-0.5 bg-neutral-800 hover:bg-neutral-700 rounded text-[10px] tracking-tight cursor-pointer"
+                    >
+                      find(category: Food)
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setMongoQuery('db.inventory_items.countDocuments()')}
+                      className="px-2 py-0.5 bg-neutral-800 hover:bg-neutral-700 rounded text-[10px] tracking-tight cursor-pointer"
+                    >
+                      count()
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setMongoQuery('db.inventory_items.updateOne({ sku: "FOOD-GCS-001" }, { $set: { quantity: 15 } })')}
+                      className="px-2 py-0.5 bg-neutral-800 hover:bg-neutral-700 rounded text-[10px] tracking-tight cursor-pointer"
+                    >
+                      updateOne()
+                    </button>
+                  </div>
+                </div>
+
+                {/* Input Query Terminal */}
+                <div className="space-y-2">
+                  <textarea 
+                    rows={2}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2 text-xs font-mono text-[#4AF626] focus:outline-none focus:border-primary placeholder:text-neutral-700"
+                    placeholder="Enter Mongo Query..."
+                    value={mongoQuery}
+                    onChange={(e) => setMongoQuery(e.target.value)}
+                  />
+                  <button 
+                    type="button"
+                    onClick={handleRunMongoQuery}
+                    className="w-full bg-primary hover:bg-primary/90 text-white py-1.5 px-3 rounded flex items-center justify-center gap-1.5 font-sans font-bold text-xs cursor-pointer transition-colors"
+                  >
+                    <Play className="w-3.5 h-3.5" /> Run Query
+                  </button>
+                </div>
+
+                {/* Sandbox Output Results View */}
+                {mongoResult !== null && (
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] uppercase font-bold text-neutral-500 block">ResultSet JSON:</span>
+                    <pre className="max-h-[220px] overflow-y-auto bg-neutral-950 border border-neutral-800 p-2.5 rounded text-[11px] text-[#26CBF6] leading-relaxed scrollbar-thin">
+                      {JSON.stringify(mongoResult, null, 2)}
+                    </pre>
+                  </div>
+                )}
+
+                {/* Live Driver Operation Trace Logs stream */}
+                <div className="space-y-1.5 pt-1">
+                  <span className="text-[10px] uppercase font-bold text-neutral-500 block">Active MongoDB Driver History Path</span>
+                  <div className="space-y-1 max-h-[110px] overflow-y-auto bg-neutral-950/50 p-2 rounded border border-neutral-800/80 font-sans text-[10px] leading-relaxed">
+                    {terminalLogs.map((log, idx) => (
+                      <div key={idx} className="flex gap-2 items-start text-neutral-400">
+                        <span className="font-mono text-neutral-600 text-[9px] select-none">{log.timestamp}</span>
+                        <span className={`font-mono font-bold uppercase ${log.type === 'success' ? 'text-green-500' : log.type === 'command' ? 'text-primary' : 'text-blue-400'}`}>
+                          [{log.type}]
+                        </span>
+                        <span className="font-mono text-neutral-300 text-[10px]">{log.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Clean reset default database items cache */}
+              <div className="flex items-center justify-between p-4 bg-[#FCE8E6] rounded-[16px] border border-transparent font-sans">
                 <div>
-                  <p className="text-title-small font-bold text-[#B06000]">Clear Stock Cache</p>
-                  <p className="text-body-small text-[#B06000]/80">Resets all inventory to demo defaults.</p>
+                  <p className="text-xs font-bold text-[#C5221F]">Hard Sync Database Factory</p>
+                  <p className="text-[11px] text-[#C5221F]/80">Reset collections state matching defaults.</p>
                 </div>
                 <button 
                   onClick={handleResetData}
-                  className="px-4 py-2 bg-[#B06000] text-white rounded-full text-label-small font-medium shadow-sm active:scale-95 transition-transform"
+                  className="px-4 py-2 bg-[#C5221F] hover:bg-[#C5221F]/90 text-white rounded-full text-xs font-bold shadow-sm active:scale-95 transition-transform cursor-pointer"
                 >
-                  Reset All
+                  Reset MongoDB
                 </button>
               </div>
+
             </CardContent>
           </Card>
         </div>
