@@ -16,11 +16,13 @@ export interface User {
   joinedDate: string;
 }
 
+export type ItemCategory = 'Produce' | 'Butchery' | 'Bakery' | 'Dry Goods' | 'Beverages' | 'Household';
+
 export interface InventoryItem {
   id: string;
   name: string;
   sku: string;
-  category: string;
+  category: ItemCategory | string;
   quantity: number;
   minThreshold: number;
   price: number;

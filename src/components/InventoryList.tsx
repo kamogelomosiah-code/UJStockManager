@@ -35,7 +35,7 @@ export default function InventoryList({
   const [successToast, setSuccessToast] = React.useState<{itemId: string, message: string} | null>(null);
 
   const searchTerm = globalSearchTerm || localSearchTerm;
-  const categories = ['All', ...Array.from(new Set(items.map(i => i.category)))];
+  const categories = ['All', 'Produce', 'Butchery', 'Bakery', 'Dry Goods', 'Beverages', 'Household'];
 
   const filteredItems = items.filter(item => {
     const searchString = `${item.name} ${item.sku} ${item.category} ${item.location}`.toLowerCase();
@@ -99,22 +99,22 @@ export default function InventoryList({
   };
 
   return (
-    <div className="space-y-6 w-full mx-auto relative">
+    <div className="space-y-6 w-full mx-auto relative px-4 sm:px-6">
       
       {/* Search Bar - Modern Rounded Pill */}
       <div className="relative">
         <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
         <input 
           type="text" 
-          placeholder="Search items, categories, shelves..." 
-          className="w-full pl-12 pr-4 py-3 bg-neutral-100 text-neutral-900 border-none rounded-full text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 font-sans transition-all placeholder:text-neutral-500"
+          placeholder="Search by product name, barcode, or SKU..." 
+          className="w-full pl-12 pr-4 py-3 bg-white text-neutral-900 border border-neutral-200 rounded-[12px] text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all placeholder:text-neutral-500 shadow-sm"
           value={localSearchTerm}
           onChange={(e) => setLocalSearchTerm(e.target.value)}
         />
       </div>
 
       {/* Horizontal Scroll bar for Category filter pills */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none scroll-smooth snap-x">
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none scroll-smooth snap-x">
         {categories.map((cat) => {
           const isActive = categoryFilter === cat;
           return (
@@ -122,10 +122,10 @@ export default function InventoryList({
               key={cat}
               onClick={() => setCategoryFilter(cat)}
               className={cn(
-                "px-4 py-2 text-xs font-bold rounded-full border transition-all shrink-0 cursor-pointer snap-center font-sans tracking-wide",
+                "px-5 py-2 text-sm font-semibold rounded-full transition-all shrink-0 cursor-pointer snap-center tracking-wide",
                 isActive 
-                  ? "bg-black text-white border-black" 
-                  : "bg-white text-neutral-600 border-neutral-200"
+                  ? "bg-primary text-white shadow-md" 
+                  : "bg-white text-neutral-600 border border-neutral-200 hover:bg-neutral-50"
               )}
             >
               {cat}
@@ -135,134 +135,69 @@ export default function InventoryList({
       </div>
 
       {/* Product Card List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <AnimatePresence mode="popLayout">
-          {filteredItems.map((item) => {
-            const aiSuggest = getAiSuggestion(item);
-            const isCritical = item.status === 'Out of Stock' || item.status === 'Low Stock';
-            // Safety stock percentage visualization
-            const fillPercent = Math.min(100, Math.max(4, (item.quantity / Math.max(1, item.minThreshold * 1.8)) * 100));
-
-            return (
+          {filteredItems.length === 0 ? (
+             <motion.div 
+               initial={{ opacity: 0 }} animate={{ opacity: 1 }} 
+               className="col-span-full py-20 flex flex-col items-center justify-center text-center space-y-4 bg-white rounded-[12px] border border-neutral-200 border-dashed"
+             >
+                <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center text-neutral-400 mb-2">
+                  <Search className="w-8 h-8" />
+                </div>
+                <h3 className="text-lg font-bold text-neutral-900">No items found</h3>
+                <p className="text-sm text-neutral-500 max-w-sm">We couldn't find any inventory matching your search. Try adjusting your filters.</p>
+             </motion.div>
+          ) : (
+          filteredItems.map((item) => (
               <motion.div
                 layout
                 key={item.id}
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="m3-card !p-4.5 space-y-3 relative flex flex-col justify-between"
+                onClick={() => onAdjustStock(item.id)}
+                className="bg-white rounded-[12px] p-4 shadow-sm border border-neutral-100 cursor-pointer hover:shadow-md transition-shadow flex flex-col sm:flex-row gap-4 justify-between sm:items-center relative group"
               >
-                {/* Active toast per-card confirmation feedback */}
-                <AnimatePresence>
-                  {successToast && successToast.itemId === item.id && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="absolute inset-0 bg-white/95 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-2 p-4 text-center"
-                    >
-                      <CheckCircle2 className="w-8 h-8 text-[#137333] animate-bounce" />
-                      <p className="text-xs font-bold text-neutral-900">{successToast.message}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <div className="flex-1 space-y-2">
+                  <h3 className="text-base font-bold text-neutral-900 group-hover:text-primary transition-colors">{item.name}</h3>
+                  <div className="flex flex-wrap items-center gap-3 text-[10px] sm:text-xs text-neutral-500 font-mono">
+                    <span>SKU: {item.sku}</span>
+                    <span className="w-1 h-1 bg-neutral-300 rounded-full hidden sm:block" />
+                    <span>Barcode: {item.id.padStart(12, '0')}</span>
+                    <span className="w-1 h-1 bg-neutral-300 rounded-full hidden sm:block" />
+                    <span className="font-sans font-semibold bg-neutral-100 px-2 py-0.5 rounded-md">{item.category}</span>
+                  </div>
+                </div>
 
-                {/* Card Header Info */}
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <span className="text-[10px] uppercase tracking-widest font-bold text-neutral-400 block font-display">
-                      {item.category} • Shelf {item.location}
-                    </span>
-                    <h3 className="text-base font-display font-black tracking-tight text-neutral-900 leading-tight">
-                      {item.name}
-                    </h3>
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-4 sm:gap-6 mt-2 sm:mt-0">
+                  <div className="flex flex-col items-start sm:items-end w-1/3 sm:w-auto">
+                    <span className="text-[10px] uppercase font-bold text-neutral-400">Total Qty</span>
+                    <span className="text-lg font-black text-neutral-900">{item.quantity}</span>
+                  </div>
+                  <div className="flex flex-col items-start sm:items-end w-1/3 sm:w-auto">
+                    <span className="text-[10px] uppercase font-bold text-neutral-400">Floor</span>
+                    <span className="text-lg font-bold text-green-700">{Math.floor(item.quantity * 0.8)}</span>
+                  </div>
+                  <div className="flex flex-col items-start sm:items-end w-1/3 sm:w-auto">
+                    <span className="text-[10px] uppercase font-bold text-neutral-400">Back-room</span>
+                    <span className="text-lg font-bold text-blue-700">{Math.ceil(item.quantity * 0.2)}</span>
                   </div>
                   
-                  {/* Status Badging */}
-                  <span className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                    item.status === 'In Stock' && "bg-[#E6F4EA] text-[#137333]",
-                    item.status === 'Low Stock' && "bg-[#FEF7E0] text-[#B06000]",
-                    item.status === 'Out of Stock' && "bg-[#FCE8E6] text-[#C5221F]"
-                  )}>
+                  <div className="w-full sm:w-[100px] flex justify-start sm:justify-end mt-2 sm:mt-0">
                     <span className={cn(
-                      "w-1.5 h-1.5 rounded-full",
-                      item.status === 'In Stock' && "bg-[#137333]",
-                      item.status === 'Low Stock' && "bg-[#B06000]",
-                      item.status === 'Out of Stock' && "bg-[#C5221F]"
-                    )} />
-                    {item.status}
-                  </span>
-                </div>
-
-                {/* Visual Level indicator */}
-                <div className="space-y-1.5">
-                  <div className="flex items-end justify-between">
-                    <div className="flex items-baseline gap-1">
-                      <span className={cn(
-                        "text-lg font-mono font-black",
-                        isCritical ? "text-red-600" : "text-neutral-900"
-                      )}>
-                        {item.quantity}
-                      </span>
-                      <span className="text-xs text-neutral-400">/ {item.minThreshold} levels</span>
-                    </div>
-                    <span className="text-xs font-bold font-mono text-neutral-800">
-                      {formatCurrency(item.price, currency)}
+                      "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                      item.status === 'In Stock' && "bg-green-100 text-green-800",
+                      item.status === 'Low Stock' && "bg-orange-100 text-orange-800",
+                      item.status === 'Out of Stock' && "bg-red-100 text-red-800"
+                    )}>
+                      {item.status}
                     </span>
                   </div>
-
-                  {/* High contrast minimal progress stock meter */}
-                  <div className="w-full h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                    <div 
-                      className={cn(
-                        "h-full rounded-full transition-all duration-500",
-                        item.status === 'In Stock' && "bg-[#137333]",
-                        item.status === 'Low Stock' && "bg-amber-500",
-                        item.status === 'Out of Stock' && "bg-red-600"
-                      )}
-                      style={{ width: `${fillPercent}%` }}
-                    />
-                  </div>
-                  
-                  {item.expiryDate && (
-                    <span className="text-[10px] text-neutral-400 flex items-center gap-1 mt-1 font-semibold">
-                      <Clock className="w-3 h-3" /> Expiration: {new Date(item.expiryDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                  )}
                 </div>
-
-                {/* AI dynamic action card recommendations nested natively */}
-                <div className="p-3.5 bg-neutral-50 rounded-xl border border-neutral-100 space-y-2.5">
-                  <div className="flex items-start gap-1.5">
-                    <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <p className="text-xs text-neutral-700 leading-normal font-medium">
-                      {aiSuggest.text}
-                    </p>
-                  </div>
-                  
-                  {/* Immediate clickable quick action button */}
-                  <button
-                    onClick={aiSuggest.action}
-                    className="w-full py-2 bg-black text-white hover:bg-neutral-900 active:scale-95 transition-all rounded-full text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-                  >
-                    {aiSuggest.buttonText}
-                  </button>
-                </div>
-
-                {/* Manual precise adjustment secondary action link */}
-                <div className="pt-1 flex justify-end">
-                  <button
-                    onClick={() => onAdjustStock(item.id)}
-                    className="text-[11px] font-bold text-neutral-500 hover:text-black flex items-center gap-1 transition-colors px-2 py-1 cursor-pointer"
-                  >
-                    <ArrowUpDown className="w-3 h-3" /> Precise Logs / Custom Adjust
-                  </button>
-                </div>
-
               </motion.div>
-            );
-          })}
+            ))
+          )}
         </AnimatePresence>
       </div>
 

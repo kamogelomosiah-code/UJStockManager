@@ -17,7 +17,8 @@ import {
   Filter,
   Download,
   LogOut,
-  Sparkles
+  Sparkles,
+  Scan
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -51,11 +52,11 @@ export default function Layout({
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'inventory', label: 'Inventory', icon: Package },
+    { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
+    { id: 'inventory', label: 'Browse', icon: Search },
+    { id: 'scanner', label: 'Scan', icon: Scan },
     { id: 'copilot', label: 'Copilot', icon: Sparkles },
-    { id: 'orders', label: 'Orders', icon: ArrowUpRight },
-    { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'settings', label: 'More', icon: Settings },
   ];
 
   return (
@@ -66,7 +67,7 @@ export default function Layout({
         <header className="h-[64px] bg-white sticky top-0 z-40 flex items-center justify-between px-4 sm:px-6 border-b border-neutral-100 shrink-0">
           <h1 className="text-base font-display font-extrabold tracking-tight text-on-surface uppercase flex items-center gap-1.5">
             <Box className="w-5 h-5 text-primary" />
-            Stock<span className="text-primary">Master</span>
+            Shop<span className="text-primary">Right</span>
           </h1>
           
           <div className="flex items-center gap-2">

@@ -9,6 +9,7 @@ import Dashboard from './components/Dashboard';
 import InventoryList from './components/InventoryList';
 import StockHistory from './components/StockHistory';
 import CopilotView from './components/CopilotView';
+import Scanner from './components/Scanner';
 import AddEditItemModal from './components/AddEditItemModal';
 import AdjustStockModal from './components/AdjustStockModal';
 import Settings from './components/Settings';
@@ -324,6 +325,8 @@ export default function App() {
         );
       case 'orders':
         return <Orders />;
+      case 'scanner':
+        return <Scanner items={items} onScanReceived={(id, qty) => handleQuickReplenish(id, qty, 'In', 'Barcode Scan Received')} />;
       case 'copilot':
         return <CopilotView items={items} movements={movements} />;
       case 'history':
