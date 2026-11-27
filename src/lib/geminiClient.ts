@@ -1,4 +1,5 @@
 import { InventoryItem, StockMovement } from '../types';
+import { authFetch } from './api';
 
 export function getGeminiApiKey(): string {
   return localStorage.getItem('uj_gemini_api_key') || '';
@@ -10,11 +11,8 @@ export function saveGeminiApiKey(key: string) {
 
 export async function clientMagicAdd(description: string): Promise<any> {
   try {
-    const response = await fetch('/api/gemini/magic', {
+    const response = await authFetch('/api/gemini/magic', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({ description })
     });
     if (!response.ok) throw new Error('API request failed');
@@ -31,11 +29,8 @@ export async function clientAskAi(params: {
   movements: StockMovement[];
 }): Promise<any> {
   try {
-    const response = await fetch('/api/gemini/ask', {
+    const response = await authFetch('/api/gemini/ask', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({ 
         question: params.question,
         inventory: params.inventory,

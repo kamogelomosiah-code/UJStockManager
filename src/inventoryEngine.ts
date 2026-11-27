@@ -245,6 +245,45 @@ class InventoryEngine {
   private saveState() {
     localStorage.setItem('functionhead_inventory', JSON.stringify(this.items));
     localStorage.setItem('functionhead_audit_logs', JSON.stringify(this.auditLogs));
+    // Lets the shared-storage sync know a real change was made.
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('uj_state_changed'));
+  }
+
+  /** Reads everything again from browser storage (used after newer shared data arrives). */
+  public reload() {
+    this.loadState();
+  }
+
+  /** Changes a product's details. (Replaces writing to storage directly, which the next log entry overwrote.) */
+  public updateProduct(itemId: string, patch: Partial<EnhancedInventoryItem>): EnhancedInventoryItem | null {
+    const index = this.items.findIndex(item => item.id === itemId);
+    if (index === -1) return null;
+    const current = this.items[index];
+    const quantity = patch.quantity !== undefined ? Math.max(0, Number(patch.quantity) || 0) : current.quantity;
+    const threshold = patch.minThreshold !== undefined ? (Number(patch.minThreshold) || current.minThreshold) : current.minThreshold;
+    const price = patch.price !== undefined ? (Number(patch.price) || current.price) : current.price;
+    this.items[index] = {
+      ...current,
+      ...patch,
+      quantity,
+      minThreshold: threshold,
+      lowStockThreshold: threshold,
+      price,
+      retailPrice: price,
+      lastUpdated: new Date().toISOString(),
+      status: quantity === 0 ? 'Out of Stock' : (quantity <= threshold ? 'Low Stock' : 'In Stock'),
+    };
+    this.logAction('PRODUCT_UPDATED', `Administrative properties update executed on "${this.items[index].name}".`);
+    return { ...this.items[index] };
+  }
+
+  /** Removes a product. */
+  public deleteProduct(itemId: string): boolean {
+    const found = this.items.find(item => item.id === itemId);
+    if (!found) return false;
+    this.items = this.items.filter(item => item.id !== itemId);
+    this.logAction('PRODUCT_DELETED', `Deleted product "${found.name}" (ID: ${itemId}).`);
+    return true;
   }
 
   public getItems(): EnhancedInventoryItem[] {
@@ -393,6 +432,7 @@ class InventoryEngine {
     localStorage.removeItem('functionhead_inventory');
     localStorage.removeItem('functionhead_audit_logs');
     this.loadState();
+    this.saveState();
   }
 }
 

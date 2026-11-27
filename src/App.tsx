@@ -20,6 +20,8 @@ import { DEMO_ITEMS, DEMO_MOVEMENTS } from './constants';
 import { InventoryItem, StockMovement, User } from './types';
 import { AnimatePresence, motion } from 'motion/react';
 import { inventoryEngine } from './inventoryEngine';
+import { logout, getToken } from './lib/api';
+import { startCloudSync, markChanged } from './lib/cloudSync';
 import AdminDeskWorkspace from './components/AdminDeskWorkspace';
 
 export default function App() {
@@ -38,7 +40,9 @@ export default function App() {
   React.useEffect(() => {
     try {
       const savedUser = localStorage.getItem('uj_user');
-      if (savedUser) setUser(JSON.parse(savedUser));
+      // A saved person without a sign-in token (an older version of the app) must sign in again.
+      if (savedUser && getToken()) setUser(JSON.parse(savedUser));
+      else if (savedUser) logout();
     } catch (e) {
       console.error('Error parsing user', e);
       localStorage.removeItem('uj_user');
@@ -109,10 +113,15 @@ export default function App() {
   // Sync state between UI and Centralized State File
   React.useEffect(() => {
     if (!isInitialized) return;
+    const prevMovements = localStorage.getItem('uj_movements');
+    const prevCurrency = localStorage.getItem('uj_currency');
+    const nextMovements = JSON.stringify(movements);
     localStorage.setItem('uj_inventory', JSON.stringify(items));
-    localStorage.setItem('uj_movements', JSON.stringify(movements));
+    localStorage.setItem('uj_movements', nextMovements);
     localStorage.setItem('uj_currency', currency);
     localStorage.setItem('uj_notifications', JSON.stringify(notifications));
+    // A real change (not the very first save of sample data) goes to the shared storage.
+    if ((prevMovements !== null && prevMovements !== nextMovements) || (prevCurrency !== null && prevCurrency !== currency)) markChanged();
   }, [items, movements, currency, notifications, isInitialized]);
 
   // Listen to local MongoDB query updates
@@ -124,6 +133,33 @@ export default function App() {
     return () => {
       window.removeEventListener('uj_stock_db_synced', handleDbSync);
     };
+  }, []);
+
+  // Shared storage: keep this device in step with the others while someone is signed in
+  React.useEffect(() => {
+    if (!user) return;
+    return startCloudSync();
+  }, [user]);
+
+  // Newer data arrived from another device: refresh what this screen keeps outside the engine
+  React.useEffect(() => {
+    const onPulled = () => {
+      try {
+        const m = localStorage.getItem('uj_movements');
+        if (m) setMovements(JSON.parse(m));
+      } catch { /* ignore */ }
+      const c = localStorage.getItem('uj_currency');
+      if (c) setCurrency(c);
+    };
+    window.addEventListener('uj_state_pulled', onPulled);
+    return () => window.removeEventListener('uj_state_pulled', onPulled);
+  }, []);
+
+  // The server says the sign-in has expired
+  React.useEffect(() => {
+    const onExpired = () => { logout(); setUser(null); };
+    window.addEventListener('uj_unauthorized', onExpired);
+    return () => window.removeEventListener('uj_unauthorized', onExpired);
   }, []);
 
   // Check for alerts
@@ -178,7 +214,7 @@ export default function App() {
       <AdminDeskWorkspace 
         user={user}
         onLogout={() => { 
-          localStorage.removeItem('uj_user'); 
+          logout();
           setUser(null); 
         }}
         currency={currency}
@@ -219,32 +255,15 @@ export default function App() {
   };
 
   const updateItem = (updatedItem: Partial<InventoryItem>) => {
-    const index = inventoryEngine.getItems().findIndex(i => i.id === editingItem?.id);
-    if (index !== -1) {
-      const allItems = inventoryEngine.getItems();
-      allItems[index] = {
-        ...allItems[index],
-        ...updatedItem,
-        price: updatedItem.price || allItems[index].price,
-        retailPrice: updatedItem.price || allItems[index].retailPrice,
-        minThreshold: updatedItem.minThreshold || allItems[index].minThreshold,
-        lowStockThreshold: updatedItem.minThreshold || allItems[index].lowStockThreshold,
-        status: (updatedItem.quantity === 0) ? 'Out of Stock' :
-                (updatedItem.quantity! <= (updatedItem.minThreshold || allItems[index].minThreshold)) ? 'Low Stock' : 'In Stock'
-      } as any;
-      localStorage.setItem('functionhead_inventory', JSON.stringify(allItems));
-      inventoryEngine.logAction('PRODUCT_UPDATED', `Administrative properties update executed on "${allItems[index].name}".`);
-    }
+    if (editingItem) inventoryEngine.updateProduct(editingItem.id, updatedItem as any);
     setItems(inventoryEngine.getItems() as any);
     setEditingItem(null);
   };
 
   const deleteItem = (id: string) => {
     if (confirm('Are you sure you want to delete this product?')) {
-      const remaining = inventoryEngine.getItems().filter(i => i.id !== id);
-      localStorage.setItem('functionhead_inventory', JSON.stringify(remaining));
-      inventoryEngine.logAction('PRODUCT_DELETED', `Deleted product reference ID: ${id}`);
-      setItems(remaining as any);
+      inventoryEngine.deleteProduct(id);
+      setItems(inventoryEngine.getItems() as any);
     }
   };
 
@@ -335,7 +354,7 @@ export default function App() {
         return (
           <Settings 
             user={user} 
-            onLogout={() => { localStorage.removeItem('uj_user'); setUser(null); }} 
+            onLogout={() => { logout(); setUser(null); }} 
             onUpdateUser={setUser}
             currency={currency}
             onUpdateCurrency={setCurrency}
@@ -364,7 +383,7 @@ export default function App() {
       searchTerm={globalSearch}
       onSearchChange={setGlobalSearch}
       onNotificationsClick={() => setIsNotificationsOpen(true)}
-      onLogout={() => { localStorage.removeItem('uj_user'); setUser(null); }}
+      onLogout={() => { logout(); setUser(null); }}
     >
       <AnimatePresence mode="wait">
         <motion.div

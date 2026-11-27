@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Card, CardContent } from './Card';
 import { Lock, Smartphone, Monitor, ShieldAlert, Sparkles } from 'lucide-react';
+import { login } from '../lib/api';
 
 interface AuthProps {
   onLogin: (user: { id: string; name: string; email: string; role: 'Admin' | 'Staff'; joinedDate: string }) => void;
@@ -12,38 +13,22 @@ export default function Auth({ onLogin }: AuthProps) {
   const [passcode, setPasscode] = React.useState('');
   const [errorMsg, setErrorMsg] = React.useState('');
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
+  const [busy, setBusy] = React.useState(false);
 
-    if (selectedRole === 'Staff') {
-      if (passcode === 'owner123' || passcode === '123' || passcode === '') {
-        const staffUser = {
-          id: 'user-owner',
-          name: 'Cafeteria Owner',
-          email: 'owner@uj.ac.za',
-          role: 'Staff' as const,
-          joinedDate: new Date().toISOString()
-        };
-        onLogin(staffUser);
-        localStorage.setItem('uj_user', JSON.stringify(staffUser));
-      } else {
-        setErrorMsg('Invalid Owner/Operator passcode. Hint: Use "owner123" or leave blank for instant login.');
-      }
-    } else {
-      if (passcode === 'admin123' || passcode === 'admin' || passcode === '') {
-        const adminUser = {
-          id: 'user-admin',
-          name: 'Chief Supply Administrator',
-          email: 'admin@uj.ac.za',
-          role: 'Admin' as const,
-          joinedDate: new Date().toISOString()
-        };
-        onLogin(adminUser);
-        localStorage.setItem('uj_user', JSON.stringify(adminUser));
-      } else {
-        setErrorMsg('Invalid Administrative passcode. Hint: Use "admin123" or leave blank for instant login.');
-      }
+  // The server checks the passcode. Nothing secret is in this page.
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+    setErrorMsg('');
+    setBusy(true);
+    try {
+      const user = await login(selectedRole, passcode);
+      localStorage.setItem('uj_user', JSON.stringify(user));
+      onLogin(user);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Sign-in failed.');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -116,16 +101,15 @@ export default function Auth({ onLogin }: AuthProps) {
                     <label className="text-[10px] font-bold uppercase text-neutral-400 font-sans">
                       Security Passcode
                     </label>
-                    <span className="text-[9px] text-neutral-400 font-mono font-bold">
-                      {selectedRole === 'Staff' ? 'Hint: owner123' : 'Hint: admin123'}
-                    </span>
+
                   </div>
                   
                   <div className="relative">
                     <Lock className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input 
                       type="password" 
-                      placeholder={selectedRole === 'Staff' ? 'owner123' : 'admin123'}
+                      placeholder="Enter your passcode"
+                      autoComplete="current-password"
                       className="w-full bg-neutral-50 hover:bg-neutral-100/70 text-neutral-900 font-mono border border-neutral-200 rounded-xl pl-9 pr-4 py-3 text-xs outline-none focus:border-black focus:ring-1 focus:ring-black/10 transition-all placeholder:text-neutral-300"
                       value={passcode}
                       onChange={(e) => setPasscode(e.target.value)}
@@ -148,9 +132,10 @@ export default function Auth({ onLogin }: AuthProps) {
               {/* Monochromatic pill-shaped button using red accent (#FF3B30) */}
               <button 
                 type="submit"
+                disabled={busy}
                 className="w-full py-3 bg-[#FF3B30] text-white hover:bg-[#E03026] active:scale-95 transition-all rounded-full text-xs font-bold uppercase tracking-wider font-sans shadow-sm flex items-center justify-center gap-2 cursor-pointer"
               >
-                Access Terminal Keyway
+                {busy ? 'Checking…' : 'Access Terminal Keyway'}
               </button>
 
               <div className="pt-2 text-center border-t border-neutral-100 font-mono text-[9px] text-neutral-400 flex items-center justify-center gap-1">
